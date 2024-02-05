@@ -1,0 +1,29 @@
+{
+    "run_id": "1",
+    "dynamic": {
+        "name": "CNVM",
+        "num_states": 2,
+        "rates": {
+            "r_imit":1.01,
+            "r_noise": 0.01,
+            "prob_imit": [[0, 0.98],
+                          [1, 0]]
+        }
+    },
+    "network": {
+        "generate_new": true,
+        "network_id": "test_network_1",
+        "name": "albert-barabasi",
+        "num_nodes": 200,
+        "num_attachments": 2
+    },
+    "simulation": {
+        "sampling": {
+            "method": "local_cluster",
+            "lag_time": 4,
+            "num_anchor_points": 50,
+            "num_samples_per_anchor": 10
+        },
+        "num_coordinates": 1
+    }
+}
