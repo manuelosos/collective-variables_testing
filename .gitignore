@@ -1,0 +1,9 @@
+/sponet_cv_testing/testlog.log
+/sponet_cv_testing/complete_log.log
+/sponet_cv_testing/models/
+/sponet_cv_testing/data/networks/
+/sponet_cv_testing/data/results/
+/sponet_cv_testing/data/data_log.txt
+/sponet_cv_testing/runfiles/
+/sponet_cv_testing/tmp_results/
+/tests/templates/
