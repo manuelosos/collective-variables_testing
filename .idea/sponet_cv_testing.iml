@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/sponet_cv_testing/models" />
       <excludeFolder url="file://$MODULE_DIR$/sponet_cv_testing/runfiles" />
       <excludeFolder url="file://$MODULE_DIR$/sponet_cv_testing/tmp_results" />
+      <excludeFolder url="file://$MODULE_DIR$/tests" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
@@ -14,7 +15,14 @@
     <option name="requirementsPath" value="" />
   </component>
   <component name="PyDocumentationSettings">
-    <option name="format" value="PLAIN" />
-    <option name="myDocStringFormat" value="Plain" />
+    <option name="format" value="NUMPY" />
+    <option name="myDocStringFormat" value="NumPy" />
+  </component>
+  <component name="TemplatesService">
+    <option name="TEMPLATE_FOLDERS">
+      <list>
+        <option value="$MODULE_DIR$/tests/templates" />
+      </list>
+    </option>
   </component>
 </module>

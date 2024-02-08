@@ -38,10 +38,10 @@ def create_test_folder(path: str, run_parameters: dict) -> str:
     Path to the created folder
     """
     run_id: str = run_parameters["run_id"]
-    run_folder_path: str = f"{path}/{run_id}"
+    run_folder_path: str = f"{path}/{run_id}/"
     os.mkdir(run_folder_path)
 
-    with open(f"{run_folder_path}/parameters.json", "w") as target_file:
+    with open(f"{run_folder_path}parameters.json", "w") as target_file:
         json.dump(run_parameters, target_file)
 
     return run_folder_path
@@ -65,23 +65,30 @@ def run_queue(run_files: list[dict], save_path: str) -> None:
     logger.info(f"Started {len(run_files)} runs.")
 
     for run_parameters in run_files:
-
         run_id: str = run_parameters["run_id"]
         logger.info(f"Started run_id: {run_id}")
 
         start_time = time.time()
+
+        work_path: str = create_test_folder(save_path, run_parameters)
         try:
-            work_path: str = create_test_folder(save_path, run_parameters)
             compute_run(run_parameters, work_path)
 
         except Exception as err:
-            logger.error(f"An Exception occurred in run: {run_id}\nException: {str(err)}\n")
+            end_time = time.time()
+            run_time = end_time - start_time
+            logger.error(f"An Exception occurred in run: {run_id} after {run_time}\nException: {str(err)}\n")
             err.add_note(f"Occurred in run: {run_id}")
-            raise err
+
         else:
             end_time = time.time()
             run_times.append(end_time - start_time)
-            logger.info(f"Finished without Exceptions! in {run_times[-1]} seconds.\n")
+            logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
+            run_ids.append(run_id)
+
+            with open(f"{work_path}run_finished.txt", "w") as file:
+                file.write(f"The existence of this file indicates, that the run {run_id} finished without errors.")
+            logger.debug("run_finished file created.")
 
     logger.info(f"Finished runs : {run_ids} in {sum(run_times)} seconds.\n\n")
     return

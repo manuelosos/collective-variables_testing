@@ -12,18 +12,18 @@ complete_file_handler.setLevel(logging.DEBUG)
 test_file_handler = logging.FileHandler("testlog.log")  # Handler that just logs the important messages about the tests
 test_file_handler.setLevel(logging.INFO)
 
-consolehandler = logging.StreamHandler()
-consolehandler.setLevel(logging.INFO)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
 
 compact_formatter = logging.Formatter("%(asctime)s - %(message)s")
-consolehandler.setFormatter(compact_formatter)
+console_handler.setFormatter(compact_formatter)
 test_file_handler.setFormatter(compact_formatter)
 
 complete_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 complete_file_handler.setFormatter(complete_formatter)
 
 logger.addHandler(complete_file_handler)
-logger.addHandler(consolehandler)
+logger.addHandler(console_handler)
 logger.addHandler(test_file_handler)
 
 

@@ -33,8 +33,8 @@ def generate_network(network_parameters: dict, save_path: str) -> nx.Graph:
 
     network_id: str = network_parameters["network_id"]
 
-    nx.write_graphml(network, f"{save_path}/{network_id}")
-    logger.debug(f"Saved network to {save_path}/{network_id}")
+    nx.write_graphml(network, f"{save_path}{network_id}")
+    logger.debug(f"Saved network to {save_path}{network_id}")
     return network
 
 
@@ -113,7 +113,7 @@ def sample_anchors(
     logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
     x_samples: np.ndarray = sample_cnvm(x_anchor, num_samples_per_anchor, lag_time, dynamic)
 
-    np.savez_compressed(f"{save_path}/x_data", x_anchor=x_anchor, x_samples=x_samples)
+    np.savez_compressed(f"{save_path}x_data", x_anchor=x_anchor, x_samples=x_samples)
 
     logger.info(f"Finished sampling")
     return x_anchor, x_samples
@@ -130,7 +130,7 @@ def approximate_tm(dynamic: CNVMParameters | CNTMParameters, samples: np.ndarray
     logger.info(f"Starting approximating transition manifold with dimension={d}")
     xi = trans_manifold.fit(samples, optimize_bandwidth=True)
 
-    np.save(f"{save_path}/transition_manifold", xi)
+    np.save(f"{save_path}transition_manifold", xi)
     logger.info(f"Finished approximating")
     return xi
 
@@ -152,11 +152,11 @@ def linear_regression(
     logger.info(f"Starting linear regressing without pre weighting\nTested penalizing values: {pen_vals}")
     alphas, colors = optimize_fused_lasso(anchors, xi, network, pen_vals, performance_threshold=0.999)
 
-    np.savez(f"{save_path}/cv_optim.npz", alphas=alphas, xi_fit=colors)
+    np.savez(f"{save_path}cv_optim.npz", alphas=alphas, xi_fit=colors)
     logger.info("Finished linear regression")
 
     xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions)
-    with open(f"{save_path}/cv.pkl", "wb") as file:
+    with open(f"{save_path}cv.pkl", "wb") as file:
         pickle.dump(xi_cv, file)
     logger.info("Finished")
 
@@ -169,10 +169,10 @@ def linear_regression(
         anchors, xi, network, pen_vals, weights=weights, performance_threshold=0.999
     )
 
-    np.savez(f"{save_path}/cv_optim_degree_weighted.npz", alphas=alphas, xi_fit=colors)
+    np.savez(f"{save_path}cv_optim_degree_weighted.npz", alphas=alphas, xi_fit=colors)
 
     xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions, weights=weights)
-    with open(f"{save_path}/cv_degree_weighted.pkl", "wb") as file:
+    with open(f"{save_path}cv_degree_weighted.pkl", "wb") as file:
         pickle.dump(xi_cv, file)
     logger.info("Finished")
 
