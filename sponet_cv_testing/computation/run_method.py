@@ -5,6 +5,7 @@ import numpy as np
 import networkx as nx
 from collections.abc import Iterable
 import logging
+import numba
 
 from .interpretable_cvs import (
     TransitionManifold,
@@ -91,6 +92,7 @@ def approximate_tm(dynamic: CNVMParameters | CNTMParameters, samples: np.ndarray
 
     logger.info(f"Starting approximating transition manifold with dimension={d}")
     xi = trans_manifold.fit(samples, optimize_bandwidth=True)
+    logger.info(f"Used Threading layer: {numba.threading_layer()}")
 
     additional_data = json.dumps({"dimension_estimate": trans_manifold.dimension_estimate})
     with open(f"{save_path}additional_information.json", "w") as file:

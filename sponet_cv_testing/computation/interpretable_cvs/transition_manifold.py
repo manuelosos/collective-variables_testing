@@ -1,7 +1,9 @@
 import numpy as np
 from numba import njit, prange
 import scipy.sparse.linalg as sla
+import logging
 
+logger = logging.getLogger("sponet_cv_testing.computation")
 
 class TransitionManifold:
     def __init__(
@@ -34,9 +36,13 @@ class TransitionManifold:
             Array containing the coordinates of each anchor point in diffusion space.
             Shape = (num_anchor_points, dimension).
         """
+        logger.debug(f"Generating distance matrix")
         self.set_distance_matrix(x_samples)
         if optimize_bandwidth:
+            logger.debug("Optimizing bandwidth of diffusion map")
             self.optimize_bandwidth_diffusion_maps()
+
+        logger.debug("Calculating diffusion maps")
         return self.calc_diffusion_map()
 
     def set_distance_matrix(self, x_samples: np.ndarray):
