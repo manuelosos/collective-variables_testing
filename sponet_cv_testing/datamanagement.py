@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import networkx as nx
 import datetime
+import numpy as np
 
 # global variables that should be changed if necessary
 data_path: str = "data/"
@@ -51,6 +52,13 @@ def archive_network(source: str, network_parameters: dict) -> tuple:
     return network_id, name, num_nodes
 
 
+def get_run_rates(rates: dict) -> tuple[float, float, float, float]:
+    """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
+    r: np.ndarray = np.array(rates["r"])
+    r_tilde: np.ndarray = np.array(rates["r_tilde"])
+    return (r[0, 1], r[1, 0], r_tilde[0, 1], r_tilde[1, 0])
+
+
 def archive_run_result(source: str) -> None:
 
     with open(f"{source}/parameters.json", "r") as target_file:
@@ -60,7 +68,7 @@ def archive_run_result(source: str) -> None:
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic_name: str = dynamic_parameters["name"]
-    num_states: int = dynamic_parameters["num_states"]
+    dynamic_rates = get_run_rates(dynamic_parameters["rates"])
 
     network_parameters: dict = parameters["network"]
     network_id, network_type, num_nodes = archive_network(source, network_parameters)
@@ -70,7 +78,7 @@ def archive_run_result(source: str) -> None:
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
 
-    cv_dimension: int = parameters["simulation"]["num_coordinates"]
+    num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
     results = pd.read_csv(
         f"{data_path}{results_csv_path}",
@@ -78,8 +86,11 @@ def archive_run_result(source: str) -> None:
         dtype={"run_id": str}
     )
 
-    if run_id in results.index:
+    with open(f"{source}/additional_information.json", "r") as file:
+        misc_info = json.load(file)
+    dimension_estimate: float = misc_info["dimension_estimate"]
 
+    if run_id in results.index:
         logger.error(f"Run {run_id} has no unique id")
         raise FileExistsError("The run id is not unique")
 
@@ -88,8 +99,10 @@ def archive_run_result(source: str) -> None:
         logger.error(f"Run {run_id} has not been finished. Archiving failed")
         raise ValueError(f"Run {run_id} is not finished")
 
-    new_result: list = [dynamic_name, num_states, network_id, network_type,
-                        num_nodes, lag_time, num_anchor_points, num_samples_per_anchor, cv_dimension]
+
+    new_result: list = [
+        dynamic_name, *dynamic_rates, network_id, network_type, num_nodes, lag_time, num_anchor_points,
+        num_samples_per_anchor, num_coordinates, dimension_estimate]
 
     results.loc[run_id] = new_result
     results.to_csv(f"{data_path}{results_csv_path}")
@@ -102,7 +115,7 @@ def archive_run_result(source: str) -> None:
     return
 
 
-def generate_new_unique_run_id(n: int = 1, name: str = "") -> list[str]:
+def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
     timestamp: str = datetime.datetime.now().strftime("%y-%m-%d")
 
@@ -129,4 +142,5 @@ def generate_new_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 
 if __name__ == "__main__":
-    archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/1")
+    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/1")
+    print(generate_unique_run_id(1, "ab_1000_1"))

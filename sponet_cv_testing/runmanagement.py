@@ -2,21 +2,24 @@ import os
 import json
 import time
 import logging
-
-from sponet_cv_testing.computation.compute import compute_run
+import networkx as nx
+from sponet import network_generator as ng
+from computation.compute import compute_run
 
 logger = logging.getLogger("sponet_cv_testing.runmanagement")
 
 
 def get_runfiles(path: str) -> list[dict]:
-    """Fetches the json files in a folder and returns them as dictionaries.
+    """
+    Reads the json files in a folder and returns them as dictionaries.
     Lists will not be converted to numpy arrays.
 
     Parameters
     path (str) : Path to the folder containing the json files.
 
     Returns  (list[dict])
-    list of dictionaries containing the parsed json files"""
+    list of dictionaries containing the parsed json files
+    """
     runfiles = os.listdir(path)
 
     run_parameters = []
@@ -47,15 +50,58 @@ def create_test_folder(path: str, run_parameters: dict) -> str:
     return run_folder_path
 
 
-def run_queue(run_files: list[dict], save_path: str) -> None:
+def generate_network(network_parameters: dict, save_path: str) -> nx.Graph:
+    """Generates a new network with the given parameters and saves it in save file."""
+    model: str = network_parameters["model"]
+    num_nodes: int = network_parameters["num_nodes"]
+
+    logger.debug(f"Generating new {model} network with {num_nodes} nodes.")
+
+    if model == "albert-barabasi":
+        num_attachments: int = network_parameters["num_attachments"]
+        network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
+        network.name = f"albert-barabasi_{num_nodes}n_{num_attachments}a"
+    else:
+        raise ValueError(f"Unknown network model: {model}")
+
+    nx.write_graphml(network, f"{save_path}{network.name}")
+    logger.debug(f"Saved network to {save_path}{network.name}")
+    return network
+
+
+def load_network(save_path: str, network_id: str) -> nx.Graph:
+    """Loads the network with the network_id in the specified save path."""
+    logger.debug(f"Loading network from {save_path}/{network_id}")
+    return nx.read_graphml(f"{save_path}/{network_id}")
+
+
+def setup_network(network_parameters: dict, work_path: str, archive_path: str) -> nx.Graph:
+    generate_new: bool = network_parameters["generate_new"]
+
+    if generate_new is False:
+        network_id: str = network_parameters["network_id"]
+        network = load_network(archive_path, network_id)
+    else:
+        network = generate_network(network_parameters, work_path)
+        network_id: str = network.name
+
+    logger.info(f"Network {network_id} of type {network.name} and with {network.number_of_nodes()} nodes setup")
+    return network
+
+
+def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
     """Runs the tests specified in the runfiles. The results will be saved in save_path.
 
     Parameters
     ----------
     run_files : (list[dict])
     A list of dictionaries that contain the parameters for the tests.
+
     save_path : (str)
     The path to the folder where the results should be saved.
+
+    archive_path : (str)
+    The path to the archive. Only needed if network is loaded from existing ones.
 
     The results will be saved in save_path in folders named by the run_id
 
@@ -71,8 +117,12 @@ def run_queue(run_files: list[dict], save_path: str) -> None:
         start_time = time.time()
 
         work_path: str = create_test_folder(save_path, run_parameters)
+
+        network_parameters: dict = run_parameters["network"]
+        network = setup_network(network_parameters, work_path, archive_path)
+
         try:
-            compute_run(run_parameters, work_path)
+            compute_run(network, run_parameters, work_path)
 
         except Exception as err:
             end_time = time.time()

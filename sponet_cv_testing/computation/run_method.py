@@ -1,8 +1,8 @@
+import json
 import pickle
 from sponet import CNVMParameters, CNTMParameters
 import numpy as np
 import networkx as nx
-from sponet import network_generator as ng
 from collections.abc import Iterable
 import logging
 
@@ -18,50 +18,11 @@ from .interpretable_cvs import (
 logger = logging.getLogger("sponet_cv_testing.computation")
 
 
-def generate_network(network_parameters: dict, save_path: str) -> nx.Graph:
-    """Generates a new network with the given parameters and saves it in save file."""
-    name: str = network_parameters["name"]
-    num_nodes: int = network_parameters["num_nodes"]
-
-    logger.debug(f"Generating new {name} network with {num_nodes} nodes.")
-
-    if name == "albert-barabasi":
-        num_attachments: int = network_parameters["num_attachments"]
-        network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
-    else:
-        raise ValueError(f"Unknown network!: {name}")
-
-    network_id: str = network_parameters["network_id"]
-
-    nx.write_graphml(network, f"{save_path}{network_id}")
-    logger.debug(f"Saved network to {save_path}{network_id}")
-    return network
-
-
-def load_network(save_path: str, network_id: str) -> nx.Graph:
-    """Loads the network with the network_id in the specified save path."""
-    logger.debug(f"Loading network from {save_path}/{network_id}")
-    return nx.read_graphml(f"{save_path}/{network_id}")
-
-
-def setup_network(network_parameters: dict, work_path: str) -> nx.Graph:
-    network_id: str = network_parameters["network_id"]
-    generate_new: bool = network_parameters["generate_new"]
-
-    if generate_new is False:
-        network = load_network(work_path, network_id)
-    else:
-        network = generate_network(network_parameters, work_path)
-
-    logger.info(f"Network {network_id} of type {network.name} and with {network.number_of_nodes()} nodes setup")
-    return network
-
-
 def setup_dynamic(dynamic_parameters: dict, network: nx.Graph) -> CNVMParameters | CNTMParameters:
 
     num_states: int = dynamic_parameters["num_states"]
     rates: dict = dynamic_parameters["rates"]
-    name: str = dynamic_parameters["name"]
+    model: str = dynamic_parameters["model"]
 
     # Python lists have to be converted to numpy arrays.
     # By assumption every list passed by the json file will be converted.
@@ -69,22 +30,23 @@ def setup_dynamic(dynamic_parameters: dict, network: nx.Graph) -> CNVMParameters
         if isinstance(rates[key], Iterable):
             rates[key] = np.array(rates[key])
 
-    if name == "CNVM":
+    #TODO Make type determination case insensitive
+    if model == "CNVM":
         params = CNVMParameters(
             num_opinions=num_states,
             num_agents=network.number_of_nodes(),
             network=network,
             **rates
         )
-    elif name == "CNTM":
+    elif model == "CNTM":
         params = CNTMParameters(
             network=network,
             **rates
         )
     else:
-        raise ValueError(f"Unknown dynamic! {name}")
+        raise ValueError(f"Unknown dynamic! {model}")
 
-    logger.info(f"Dynamic of type {name} setup")
+    logger.info(f"Dynamic model {model} setup")
 
     return params
 
@@ -130,6 +92,10 @@ def approximate_tm(dynamic: CNVMParameters | CNTMParameters, samples: np.ndarray
     logger.info(f"Starting approximating transition manifold with dimension={d}")
     xi = trans_manifold.fit(samples, optimize_bandwidth=True)
 
+    additional_data = json.dumps({"dimension_estimate": trans_manifold.dimension_estimate})
+    with open(f"{save_path}additional_information.json", "w") as file:
+        file.write(additional_data)
+
     np.save(f"{save_path}transition_manifold", xi)
     logger.info(f"Finished approximating")
     return xi
@@ -149,7 +115,7 @@ def linear_regression(
 
     # no pre-weighting
     pen_vals = np.logspace(3, -2, 6)
-    logger.info(f"Starting linear regressing without pre weighting\nTested penalizing values: {pen_vals}")
+    logger.info(f"Starting linear regression without pre weighting\nTested penalizing values: {pen_vals}")
     alphas, colors = optimize_fused_lasso(anchors, xi, network, pen_vals, performance_threshold=0.999)
 
     np.savez(f"{save_path}cv_optim.npz", alphas=alphas, xi_fit=colors)
