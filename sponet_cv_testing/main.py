@@ -1,7 +1,7 @@
 import sys
 import logging
-from sponet_cv_testing.runmanagement import get_runfiles
-from sponet_cv_testing.runmanagement import run_queue
+
+from runmanagement import get_runfiles, run_queue
 
 logger = logging.getLogger("sponet_cv_testing")
 logger.setLevel(logging.DEBUG)
@@ -31,12 +31,17 @@ def main() -> None:
 
     args = sys.argv[1:]
 
-    queue_folder_path: str = args[0]
-    work_folder_path: str = args[1]
+    queue_path: str = args[0]
+    work_dir_path: str = args[1]
 
-    run_files_list: list[dict] = get_runfiles(queue_folder_path)
+    if len(args) == 3:
+        archive_path: str = args[2]
+    else:
+        archive_path: str = "data/"
 
-    run_queue(run_files_list, work_folder_path)
+    run_files_list: list[dict] = get_runfiles(queue_path)
+
+    run_queue(run_files_list, work_dir_path, archive_path)
 
     return
 

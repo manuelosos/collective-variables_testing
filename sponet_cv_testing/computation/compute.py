@@ -3,14 +3,10 @@ import time
 import logging
 
 
-def compute_run(parameters: dict, work_path: str):
-
-    network_parameters: dict = parameters["network"]
-    network = setup_network(network_parameters, work_path)
+def compute_run(network, parameters: dict, work_path: str):
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic = setup_dynamic(dynamic_parameters, network)
-    del network
 
     simulation_parameters: dict = parameters["simulation"]
 
