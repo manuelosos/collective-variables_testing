@@ -1,5 +1,6 @@
 import sys
 import logging
+import numba
 
 from runmanagement import get_runfiles, run_queue
 
@@ -27,17 +28,32 @@ logger.addHandler(console_handler)
 logger.addHandler(test_file_handler)
 
 
+def setup(num_threads: int) -> None:
+    numba.set_num_threads(num_threads)
+
+
 def main() -> None:
+    """
+    Starts the runque form the command line.
+    args:
+    queue_path: str
+        Path to the directory with the json files containing the testdata.
+    work_dir_path: str
+        Path to a directory where the work directories for each test are saved.
+    archive_path: str
+        Path to the archive datastructure. Only relevant when old networks are loaded.
+    max_number_of_threads: int
+        Sets the maximum number of threads. Use this to avoid Hyperthreading.
+    """
 
     args = sys.argv[1:]
 
     queue_path: str = args[0]
     work_dir_path: str = args[1]
+    archive_path: str = args[2]
+    max_number_of_threads = int(args[3])
 
-    if len(args) == 3:
-        archive_path: str = args[2]
-    else:
-        archive_path: str = "data/"
+    setup(max_number_of_threads)
 
     run_files_list: list[dict] = get_runfiles(queue_path)
 

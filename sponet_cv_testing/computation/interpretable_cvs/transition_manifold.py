@@ -118,7 +118,6 @@ def _numba_dist_matrix_gaussian_kernel(
     """
     num_anchor, num_samples, dimension = x_samples.shape
 
-    print(f"Number of used Threads:  {numba.get_num_threads()}")
     # compute symmetric kernel evaluations
     kernel_diagonal = np.zeros(num_anchor)
     for i in range(num_anchor):
