@@ -2,6 +2,7 @@ import numpy as np
 from numba import njit, prange
 import scipy.sparse.linalg as sla
 import logging
+import numba
 
 logger = logging.getLogger("sponet_cv_testing.computation")
 
@@ -117,13 +118,15 @@ def _numba_dist_matrix_gaussian_kernel(
     """
     num_anchor, num_samples, dimension = x_samples.shape
 
+    logger.debug(f"Number of used Threads:  {numba.get_num_threads()}")
+    logger.debug("Starting computing diagonal")
     # compute symmetric kernel evaluations
     kernel_diagonal = np.zeros(num_anchor)
     for i in range(num_anchor):
         kernel_diagonal[i] = _numba_gaussian_kernel_eval(
             x_samples[i], x_samples[i], sigma
         )
-
+    logger.debug("Starting computing non diagonal elements")
     # compute asymmetric kernel evaluations and assemble distance matrix
     distance_matrix = np.zeros((num_anchor, num_anchor))
     for i in prange(num_anchor):
