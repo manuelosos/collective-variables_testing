@@ -4,7 +4,7 @@ import scipy.sparse.linalg as sla
 import logging
 import numba
 
-logger = logging.getLogger("sponet_cv_testing.computation")
+logger = logging.getLogger("cv_testing.compute.transition_manifold")
 
 class TransitionManifold:
     def __init__(

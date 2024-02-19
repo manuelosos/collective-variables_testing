@@ -5,8 +5,9 @@ import logging
 import networkx as nx
 from sponet import network_generator as ng
 from computation.compute import compute_run
+import sys
 
-logger = logging.getLogger("sponet_cv_testing.runmanagement")
+logger = logging.getLogger("cv_testing.runmanagement")
 
 #TODO Logging verfeinern. Run spezifische Sachen sollen in Logs in den workdirs stehen.
 
@@ -14,7 +15,7 @@ logger = logging.getLogger("sponet_cv_testing.runmanagement")
 def get_runfiles(path: str) -> list[dict]:
     """
     Reads the json file that are specified by path. If path points to a directory, all json files in this dir will be
-    read. Path can also point to a single json file. In this case a list containing a single file is returned.
+    read. Path can also point to a single json file. In this case a list containing the single specified file is returned.
 
     Parameters
 
@@ -58,7 +59,7 @@ def create_test_folder(path: str, run_parameters: dict) -> str:
     os.mkdir(run_folder_path)
 
     with open(f"{run_folder_path}parameters.json", "w") as target_file:
-        json.dump(run_parameters, target_file)
+        json.dump(run_parameters, target_file, indent=3)
 
     return run_folder_path
 
@@ -102,8 +103,7 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
     return network
 
 
-# TODO Möglichkeit spezifisches File zu testen
-def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
+def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_after_error: bool = False) -> None:
     """Runs the tests specified in the runfiles. The results will be saved in save_path.
 
     Parameters
@@ -117,16 +117,21 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
     archive_path : (str)
     The path to the archive. Only needed if network is loaded from existing ones.
 
+    exit_after_error : (bool)
+    Set to true if the program should exit with system.exit(1) after an error. Default is False
+    Set to true if you want to compute single file runs on cluster.
+
     The results will be saved in save_path in folders named by the run_id
 
     Returns None"""
+
     run_times: list[float] = []
     run_ids: list[str] = []
     logger.info(f"Started {len(run_files)} runs.")
 
     for run_parameters in run_files:
         run_id: str = run_parameters["run_id"]
-        logger.info(f"Started run_id: {run_id}")
+        logger.info(f"Started run_id: {run_id} by")
 
         start_time = time.time()
 
@@ -142,7 +147,8 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
             end_time = time.time()
             run_time = end_time - start_time
             logger.error(f"An Exception occurred in run: {run_id} after {run_time}\nException: {str(err)}\n")
-
+            if exit_after_error:
+                sys.exit(1)
         else:
             end_time = time.time()
             run_times.append(end_time - start_time)

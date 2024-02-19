@@ -1,10 +1,11 @@
 import sys
 import logging
 import numba
+import json
 
 from runmanagement import get_runfiles, run_queue
 
-logger = logging.getLogger("sponet_cv_testing")
+logger = logging.getLogger("cv_testing")
 logger.setLevel(logging.DEBUG)
 
 complete_file_handler = logging.FileHandler("complete_log.log")  # Handler that logs all messages to a text log
@@ -28,37 +29,42 @@ logger.addHandler(console_handler)
 logger.addHandler(test_file_handler)
 
 
-def setup(num_threads: int) -> None:
-    numba.set_num_threads(num_threads)
+# TODO Konsolen Logging fixen. Gerade werden manche messages zweimal in die Konsole geschickt.
 
-#TODO Errormanagement anpassen. Bei Error soll sys.exit(1) geworfen werden falls man auf dem Cluster rechnet.
+def setup() -> dict:
+    with open("CONFIG.json", "r") as file:
+        config = json.load(file)
+
+    numba.set_num_threads(config["number_of_threads"])
+
+    return config
+
 
 def main() -> None:
     """
-    Starts the runque form the command line.
+    Starts the runqueue form the command line.
     args:
     queue_path: str
-        Path to the directory with the json files containing the testdata.
+        Path to the testfiles. Path can lead to a folder in which all testfiles are located. In this case path must end
+        with "/". Path can also lead to a single json file. In this case path must end with ".json"
     work_dir_path: str
         Path to a directory where the work directories for each test are saved.
-    archive_path: str
-        Path to the archive datastructure. Only relevant when old networks are loaded.
-    max_number_of_threads: int
-        Sets the maximum number of threads. Use this to avoid Hyperthreading.
     """
     logging.info("Started main.py")
     args = sys.argv[1:]
 
     queue_path: str = args[0]
     work_dir_path: str = args[1]
-    archive_path: str = args[2]
-    max_number_of_threads = int(args[3])
 
-    setup(max_number_of_threads)
+    config = setup()
 
     run_files_list: list[dict] = get_runfiles(queue_path)
 
-    run_queue(run_files_list, work_dir_path, archive_path)
+    run_queue(
+        run_files_list,
+        work_dir_path,
+        config["archive_path"],
+        exit_after_error=config["exit_after_error"])
 
     return
 

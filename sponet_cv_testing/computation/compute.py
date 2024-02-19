@@ -1,9 +1,17 @@
 from .run_method import *
-import time
 import logging
+
+logger = logging.getLogger("cv_testing.compute")
 
 
 def compute_run(network, parameters: dict, work_path: str):
+
+    runlog_handler = logging.FileHandler(f"{work_path}/runlog.log")
+    runlog_handler.setLevel(logging.DEBUG)
+    runlog_formatter = logging.Formatter("%(asctime)s - %(message)s")
+    runlog_handler.setFormatter(runlog_formatter)
+    logger.addHandler(runlog_handler)
+
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic = setup_dynamic(dynamic_parameters, network)

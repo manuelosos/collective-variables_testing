@@ -16,7 +16,7 @@ from .interpretable_cvs import (
     integrate_anchor_points
 )
 
-logger = logging.getLogger("sponet_cv_testing.computation")
+logger = logging.getLogger("cv_testing.compute")
 
 
 def setup_dynamic(dynamic_parameters: dict, network: nx.Graph) -> CNVMParameters | CNTMParameters:

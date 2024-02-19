@@ -11,7 +11,7 @@ import numpy as np
 data_path: str = "data/"
 results_csv_path: str = "results/results_table.csv"
 
-logger = logging.getLogger("sponet_cv_testing.datamanagement")
+logger = logging.getLogger("cv_testing.datamanagement")
 logger.setLevel(logging.DEBUG)
 
 file_handler = logging.FileHandler(f"{data_path}data_log.log")
