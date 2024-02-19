@@ -8,25 +8,38 @@ from computation.compute import compute_run
 
 logger = logging.getLogger("sponet_cv_testing.runmanagement")
 
+#TODO Logging verfeinern. Run spezifische Sachen sollen in Logs in den workdirs stehen.
+
 
 def get_runfiles(path: str) -> list[dict]:
     """
-    Reads the json files in a folder and returns them as dictionaries.
-    Lists will not be converted to numpy arrays.
+    Reads the json file that are specified by path. If path points to a directory, all json files in this dir will be
+    read. Path can also point to a single json file. In this case a list containing a single file is returned.
 
     Parameters
-    path (str) : Path to the folder containing the json files.
+
+    path (str) :
+        Path to the folder containing the json file or to the singe json file itself.
+        If a whole directory is specified the path mus end with "/"
+        Example: the json files are in the directory "test_files" then "[..]/test_files/" must be passed as path.
 
     Returns  (list[dict])
     list of dictionaries containing the parsed json files
     """
-    runfiles = os.listdir(path)
 
-    run_parameters = []
-    for runfile in runfiles:
-        if runfile.endswith(".json"):
-            with open(f"{path}/{runfile}", "r") as target_file:
-                run_parameters.append(json.load(target_file))
+    if path.endswith('/'):
+        runfiles = os.listdir(path)
+        run_parameters = []
+        for runfile in runfiles:
+            if runfile.endswith(".json"):
+                with open(f"{path}{runfile}", "r") as target_file:
+                    run_parameters.append(json.load(target_file))
+
+    elif path.endswith(".json"):
+        with open(path, "r") as target_file:
+            run_parameters = [json.load(target_file)]
+    else:
+        raise FileNotFoundError(f"Path {path} is not valid!")
     return run_parameters
 
 
@@ -89,6 +102,7 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
     return network
 
 
+# TODO Möglichkeit spezifisches File zu testen
 def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
     """Runs the tests specified in the runfiles. The results will be saved in save_path.
 
@@ -128,7 +142,6 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str) -> None:
             end_time = time.time()
             run_time = end_time - start_time
             logger.error(f"An Exception occurred in run: {run_id} after {run_time}\nException: {str(err)}\n")
-            err.add_note(f"Occurred in run: {run_id}")
 
         else:
             end_time = time.time()

@@ -31,6 +31,7 @@ logger.addHandler(test_file_handler)
 def setup(num_threads: int) -> None:
     numba.set_num_threads(num_threads)
 
+#TODO Errormanagement anpassen. Bei Error soll sys.exit(1) geworfen werden falls man auf dem Cluster rechnet.
 
 def main() -> None:
     """
@@ -45,7 +46,7 @@ def main() -> None:
     max_number_of_threads: int
         Sets the maximum number of threads. Use this to avoid Hyperthreading.
     """
-
+    logging.info("Started main.py")
     args = sys.argv[1:]
 
     queue_path: str = args[0]
