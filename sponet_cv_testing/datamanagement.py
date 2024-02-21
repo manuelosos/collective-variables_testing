@@ -9,7 +9,7 @@ import numpy as np
 import csv
 
 # global variables that should be changed if necessary
-data_path: str = "../data/"
+data_path: str = "data/"
 results_csv_path: str = "results/results_table.csv"
 
 logger = logging.getLogger("cv_testing.datamanagement")

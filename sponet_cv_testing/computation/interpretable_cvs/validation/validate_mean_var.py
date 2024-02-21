@@ -1,8 +1,8 @@
-import numpy as np
-from sponet.collective_variables import CollectiveVariable
-from sponet import sample_many_runs, Parameters
-from matplotlib import pyplot as plt
 import matplotlib.ticker as mtick
+import numpy as np
+from matplotlib import pyplot as plt
+from sponet import sample_many_runs, Parameters
+from sponet.collective_variables import CollectiveVariable
 
 
 class MinorSymLogLocator(mtick.Locator):

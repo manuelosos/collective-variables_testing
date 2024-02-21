@@ -1,4 +1,4 @@
-from run_method import *
+from computation.run_method import *
 import logging
 from sponet_cv_testing.datamanagement import write_misc_data
 

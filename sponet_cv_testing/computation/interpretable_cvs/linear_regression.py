@@ -1,12 +1,12 @@
-import numpy as np
 import cvxpy as cp
 import networkx as nx
-from sponet.collective_variables import OpinionShares, CompositeCollectiveVariable
+import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.model_selection import ShuffleSplit, GridSearchCV
 from scipy.sparse import csr_matrix, lil_matrix
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.model_selection import ShuffleSplit, GridSearchCV
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sponet.collective_variables import OpinionShares, CompositeCollectiveVariable
 
 
 class GeneralizedLasso(BaseEstimator, RegressorMixin):

@@ -1,8 +1,8 @@
-import numpy as np
-from numba import njit, prange
-import scipy.sparse.linalg as sla
 import logging
-import numba
+
+import numpy as np
+import scipy.sparse.linalg as sla
+from numba import njit, prange
 
 logger = logging.getLogger("cv_testing.compute.transition_manifold")
 

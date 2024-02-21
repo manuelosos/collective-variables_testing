@@ -1,6 +1,6 @@
 import numpy as np
-from sponet import Parameters, sample_many_runs
 from matplotlib import pyplot as plt
+from sponet import Parameters, sample_many_runs
 
 
 def plot_c_rand_func(t: np.ndarray, c: np.ndarray):

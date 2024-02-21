@@ -1,10 +1,11 @@
 
-import pickle
-from sponet import CNVMParameters, CNTMParameters
-import numpy as np
-import networkx as nx
-from collections.abc import Iterable
 import logging
+import pickle
+from collections.abc import Iterable
+
+import networkx as nx
+import numpy as np
+from sponet import CNVMParameters, CNTMParameters
 
 from interpretable_cvs import (
     TransitionManifold,
