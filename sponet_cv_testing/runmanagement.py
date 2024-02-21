@@ -6,6 +6,7 @@ import networkx as nx
 from sponet import network_generator as ng
 from computation.compute import compute_run
 import sys
+import datamanagement as dm
 
 logger = logging.getLogger("cv_testing.runmanagement")
 
@@ -44,8 +45,8 @@ def get_runfiles(path: str) -> list[dict]:
     return run_parameters
 
 
-def create_test_folder(path: str, run_parameters: dict) -> str:
-    """Creates a folder in the specified location and saves the parameter file in it.
+def create_work_dir(path: str, run_parameters: dict) -> str:
+    """Creates a dir in the specified location and saves the parameter file in it.
 
     Parameters:
     path (str): The path in which the folder will be created.
@@ -64,7 +65,7 @@ def create_test_folder(path: str, run_parameters: dict) -> str:
     return run_folder_path
 
 
-def generate_network(network_parameters: dict, save_path: str) -> nx.Graph:
+def generate_network(network_parameters: dict, save_path: str, filename: str="network") -> nx.Graph:
     """Generates a new network with the given parameters and saves it in save file."""
     model: str = network_parameters["model"]
     num_nodes: int = network_parameters["num_nodes"]
@@ -74,19 +75,13 @@ def generate_network(network_parameters: dict, save_path: str) -> nx.Graph:
     if model == "albert-barabasi":
         num_attachments: int = network_parameters["num_attachments"]
         network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
-        network.name = f"albert-barabasi_{num_nodes}n_{num_attachments}a"
+        #network.name = dm.generate_network_id(network_parameters)
     else:
         raise ValueError(f"Unknown network model: {model}")
 
-    nx.write_graphml(network, f"{save_path}{network.name}")
+    dm.save_network(network, save_path, filename)
     logger.debug(f"Saved network to {save_path}{network.name}")
     return network
-
-
-def load_network(save_path: str, network_id: str) -> nx.Graph:
-    """Loads the network with the network_id in the specified save path."""
-    logger.debug(f"Loading network from {save_path}/{network_id}")
-    return nx.read_graphml(f"{save_path}/{network_id}")
 
 
 def setup_network(network_parameters: dict, work_path: str, archive_path: str) -> nx.Graph:
@@ -94,7 +89,7 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
 
     if generate_new is False:
         network_id: str = network_parameters["network_id"]
-        network = load_network(archive_path, network_id)
+        network = dm.open_network(archive_path, network_id)
     else:
         network = generate_network(network_parameters, work_path)
         network_id: str = network.name
@@ -135,7 +130,7 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_aft
 
         start_time = time.time()
 
-        work_path: str = create_test_folder(save_path, run_parameters)
+        work_path: str = create_work_dir(save_path, run_parameters)
 
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
@@ -158,6 +153,9 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_aft
             with open(f"{work_path}run_finished.txt", "w") as file:
                 file.write(f"The existence of this file indicates, that the run {run_id} finished without errors.")
             logger.debug("run_finished file created.")
+
+            #with open(f"{work_path}misc_data.json", "w") as file:
+
 
     logger.info(f"Finished runs : {run_ids} in {sum(run_times)} seconds.\n\n")
     return

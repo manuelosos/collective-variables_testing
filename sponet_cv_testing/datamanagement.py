@@ -6,6 +6,7 @@ import os
 import networkx as nx
 import datetime
 import numpy as np
+import csv
 
 # global variables that should be changed if necessary
 data_path: str = "data/"
@@ -30,29 +31,75 @@ logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
 
-def archive_network(source: str, network_parameters: dict) -> tuple:
+def read_data_csv() -> pd.DataFrame:
+    data_csv = pd.read_csv(
+        f"{data_path}{results_csv_path}",
+        index_col=0,
+        dtype={"run_id": str}
+    )
+    return data_csv
 
-    network_id = str(network_parameters["network_id"])
 
-    if network_parameters["generate_new"]:
-        file_list = os.listdir(f"{data_path}networks")
-        if network_id in file_list:
-            logger.error(f"Network {network_id} is already saved or has non unique id.")
-            raise ValueError(f"Network {network_id} is already saved or has non unique id.")
+def read_misc_data(source: str) -> dict:
+    with open(f"{source}/misc_data.txt", "r") as file:
+        reader = csv.reader(file, delimiter=":")
+        data = {}
+        for row in reader:
+            data.update({row[0]: row[1]})
+    return data
 
-        shutil.move(f"{source}/{network_id}", f"{data_path}networks/")
-        name = network_parameters["name"]
-        num_nodes = network_parameters["num_nodes"]
 
+def unique_network_id(network_id: str) -> bool:
+    network_list = os.listdir(f"{data_path}networks")
+    if network_id in network_list:
+        return False
     else:
-        network: nx.Graph = nx.read_graphml(f"{data_path}networks/{network_id}")
-        name = network.name
-        num_nodes = network.number_of_nodes()
-
-    return network_id, name, num_nodes
+        return True
 
 
-def get_run_rates(rates: dict) -> tuple[float, float, float, float]:
+def generate_network_id(parameters) -> str:
+
+    num_nodes = parameters["num_nodes"]
+    model = parameters["model"]
+    if model == "albert-barabasi":
+        num_attachments = parameters["num_attachments"]
+        network_id = f"albert-barabasi_{num_nodes}n_{num_attachments}a"
+    else:
+        raise ValueError(f"Unknown model {model}")
+
+    counter = 0
+    tmp = network_id
+    while not unique_network_id(tmp):
+        counter += 1
+        tmp = f"{network_id}_{counter}"
+    network_id = tmp
+    return network_id
+
+
+def archive_network(source: str, parameters: dict) -> str:
+
+    if "network_id" in parameters.keys():
+        network_id = str(parameters["network_id"])
+        if not unique_network_id(network_id):
+            network_id = generate_network_id(parameters)
+            logger.warning(f"Network_id was not unique. Assigned new one: {network_id}")
+    else:
+        network_id = generate_network_id(parameters)
+
+    shutil.copy(f"{source}/network", f"{data_path}networks/{network_id}")
+    return network_id
+
+
+def open_network(path: str, network_id: str) -> nx.Graph:
+    return nx.read_graphml(f"{path}{network_id}")
+
+
+def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
+    nx.write_graphml(network, f"{save_path}{filename}")
+    return
+
+
+def _get_run_rates(rates: dict) -> tuple[float, float, float, float]:
     """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
     r: np.ndarray = np.array(rates["r"])
     r_tilde: np.ndarray = np.array(rates["r_tilde"])
@@ -67,42 +114,46 @@ def archive_run_result(source: str) -> None:
     run_id: str = str(parameters["run_id"])
 
     dynamic_parameters: dict = parameters["dynamic"]
-    dynamic_name: str = dynamic_parameters["name"]
-    dynamic_rates = get_run_rates(dynamic_parameters["rates"])
+    dynamic_model: str = dynamic_parameters["model"]
+    dynamic_rates: tuple = _get_run_rates(dynamic_parameters["rates"])
 
     network_parameters: dict = parameters["network"]
-    network_id, network_type, num_nodes = archive_network(source, network_parameters)
+    if network_parameters["generate_new"]:
+        if network_parameters["archive"]:
+            network_id = archive_network(source, network_parameters)
+        else:
+            network_id = np.nan
+        network_model = network_parameters["model"]
+        num_nodes = network_parameters["num_nodes"]
+    else:
+        network_id = network_parameters["network_id"]
+        network = open_network(f"{data_path}networks/", network_id)
+        num_nodes = network.number_of_nodes()
+        network_model = network.name.split["_"][0]
 
     sampling_parameters: dict = parameters["simulation"]["sampling"]
     lag_time: float = sampling_parameters["lag_time"]
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
-
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
-    results = pd.read_csv(
-        f"{data_path}{results_csv_path}",
-        index_col=0,
-        dtype={"run_id": str}
-    )
+    misc_data = read_misc_data(source)
+    dimension_estimate: float = float(misc_data["dimension_estimate"])
 
-    with open(f"{source}/additional_information.json", "r") as file:
-        misc_info = json.load(file)
-    dimension_estimate: float = misc_info["dimension_estimate"]
-
+    results = read_data_csv()
     if run_id in results.index:
         logger.error(f"Run {run_id} has no unique id")
         raise FileExistsError("The run id is not unique")
 
     file_list: list[str] = os.listdir(source)
-    if "run_finished.txt" not in file_list:
-        logger.error(f"Run {run_id} has not been finished. Archiving failed")
-        raise ValueError(f"Run {run_id} is not finished")
-
+    if "run_finished.txt" in file_list:
+        finished = True
+    else:
+        finished = False
 
     new_result: list = [
-        dynamic_name, *dynamic_rates, network_id, network_type, num_nodes, lag_time, num_anchor_points,
-        num_samples_per_anchor, num_coordinates, dimension_estimate]
+        dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
+        num_samples_per_anchor, num_coordinates, dimension_estimate, finished]
 
     results.loc[run_id] = new_result
     results.to_csv(f"{data_path}{results_csv_path}")
@@ -115,6 +166,12 @@ def archive_run_result(source: str) -> None:
     return
 
 
+def unique_run_id(run_id: str) -> bool:
+    """Checks if a run_id is unique in the archive."""
+    df = read_data_csv()
+    return run_id not in df.index
+
+
 def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
     timestamp: str = datetime.datetime.now().strftime("%y-%m-%d")
@@ -122,11 +179,7 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
     if not name == "":
         name = f"_{name}"
 
-    results = pd.read_csv(
-        f"{data_path}{results_csv_path}",
-        index_col=0,
-        dtype={"run_id": str}
-    )
+    results = read_data_csv()
 
     counter = 0
     while True:
@@ -142,5 +195,5 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 
 if __name__ == "__main__":
-    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/1")
-    print(generate_unique_run_id(1, "ab_1000_1"))
+    archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0")
+    #print(generate_unique_run_id(1, "ab_1000_1"))

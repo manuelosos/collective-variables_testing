@@ -40,7 +40,9 @@ The network dict has the following attributes
 * **generate_new**: boolean
   * States if a network should be generated new of if an already created network should be utilized
 * **network_id**: string (generate_new=false)
-  * specifies the id of the network that should be loaded
+  * specifies the id of the network that should be loaded. 
+    If generate_new=true and archive=true, network_id can be set to archive the network under the given id.
+    If in this case the passed network id is not unique, a warning will be logged and a new id will be assigned.
 * **archive**: boolean (generate_new=true)
   * Determines if the newly generated network should be saved in the central data structure.
     For details see "details on datamanagement" below.

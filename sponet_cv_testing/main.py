@@ -29,6 +29,8 @@ logger.addHandler(console_handler)
 logger.addHandler(test_file_handler)
 
 
+# TODO Datum in additional information packen, runtime, error logging testen,
+
 # TODO Konsolen Logging fixen. Gerade werden manche messages zweimal in die Konsole geschickt.
 
 def setup() -> dict:
