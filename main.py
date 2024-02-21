@@ -3,7 +3,7 @@ import logging
 import numba
 import json
 
-from runmanagement import get_runfiles, run_queue
+from sponet_cv_testing.runmanagement import get_runfiles, run_queue
 
 logger = logging.getLogger("cv_testing")
 logger.setLevel(logging.DEBUG)

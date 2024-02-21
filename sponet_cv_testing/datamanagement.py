@@ -9,7 +9,7 @@ import numpy as np
 import csv
 
 # global variables that should be changed if necessary
-data_path: str = "data/"
+data_path: str = "../data/"
 results_csv_path: str = "results/results_table.csv"
 
 logger = logging.getLogger("cv_testing.datamanagement")
@@ -41,12 +41,19 @@ def read_data_csv() -> pd.DataFrame:
 
 
 def read_misc_data(source: str) -> dict:
-    with open(f"{source}/misc_data.txt", "r") as file:
+    with open(f"{source}misc_data.txt", "r") as file:
         reader = csv.reader(file, delimiter=":")
         data = {}
         for row in reader:
             data.update({row[0]: row[1]})
     return data
+
+
+def write_misc_data(path: str, data: dict) -> None:
+    with open(f"{path}misc_data.txt", "a") as file:
+        for key, value in data.items():
+            file.write(f"{key}:{str(value)}\n")
+    return
 
 
 def unique_network_id(network_id: str) -> bool:
@@ -86,7 +93,7 @@ def archive_network(source: str, parameters: dict) -> str:
     else:
         network_id = generate_network_id(parameters)
 
-    shutil.copy(f"{source}/network", f"{data_path}networks/{network_id}")
+    shutil.copy(f"{source}network", f"{data_path}networks/{network_id}")
     return network_id
 
 
@@ -108,7 +115,7 @@ def _get_run_rates(rates: dict) -> tuple[float, float, float, float]:
 
 def archive_run_result(source: str) -> None:
 
-    with open(f"{source}/parameters.json", "r") as target_file:
+    with open(f"{source}parameters.json", "r") as target_file:
         parameters: dict = json.load(target_file)
 
     run_id: str = str(parameters["run_id"])
@@ -195,5 +202,4 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 
 if __name__ == "__main__":
-    archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0")
-    #print(generate_unique_run_id(1, "ab_1000_1"))
+    archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")

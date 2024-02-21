@@ -4,9 +4,9 @@ import time
 import logging
 import networkx as nx
 from sponet import network_generator as ng
-from computation.compute import compute_run
+from sponet_cv_testing.compute import compute_run
 import sys
-import datamanagement as dm
+import sponet_cv_testing.datamanagement as dm
 
 logger = logging.getLogger("cv_testing.runmanagement")
 
@@ -75,7 +75,6 @@ def generate_network(network_parameters: dict, save_path: str, filename: str="ne
     if model == "albert-barabasi":
         num_attachments: int = network_parameters["num_attachments"]
         network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
-        #network.name = dm.generate_network_id(network_parameters)
     else:
         raise ValueError(f"Unknown network model: {model}")
 
@@ -146,16 +145,16 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_aft
                 sys.exit(1)
         else:
             end_time = time.time()
-            run_times.append(end_time - start_time)
+            run_time = end_time - start_time
+            run_times.append(run_time)
+            dm.write_misc_data(work_path, {"run_time": run_time})
+
             logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
             run_ids.append(run_id)
 
             with open(f"{work_path}run_finished.txt", "w") as file:
                 file.write(f"The existence of this file indicates, that the run {run_id} finished without errors.")
             logger.debug("run_finished file created.")
-
-            #with open(f"{work_path}misc_data.json", "w") as file:
-
 
     logger.info(f"Finished runs : {run_ids} in {sum(run_times)} seconds.\n\n")
     return

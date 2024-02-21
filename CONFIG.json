@@ -1,4 +1,5 @@
 {
+  "device": "X1",
   "number_of_threads": 15,
   "exit_after_error": false,
   "archive_path": "data/"

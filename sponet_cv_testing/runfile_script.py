@@ -13,7 +13,7 @@ def fstr(x: float) -> str:
     return res
 
 
-def create_runfiles(path: str) -> None:
+def create_runfiles(path: str, save=True) -> list[dict]:
 
     dynamic = "CNVM"
     num_states = 2
@@ -33,7 +33,7 @@ def create_runfiles(path: str) -> None:
 
     #TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
 
-
+    runfiles = []
     for r_ab, r_ba, r_tilde_ab, r_tilde_ba, lag_time, num_anchor_points, num_samples_per_anchor in (
             product(r_ab_l, r_ba_l, r_tilde_ab_l, r_tilde_ba_l, lag_time_l, num_anchor_points_l, num_samples_per_anchor_l)):
 
@@ -80,11 +80,23 @@ def create_runfiles(path: str) -> None:
             }
         }
 
-        with open(f"{path}{run_id}.json", "w") as file:
-            json.dump(run, file, indent=3)
+        if save:
+            with open(f"{path}{run_id}.json", "w") as file:
+                json.dump(run, file, indent=3)
 
-    return
+        runfiles.append(run)
+
+    return runfiles
 
 
+def make_cluster_jobarray(path:str, runfiles: list[dict]):
 
-create_runfiles("runfiles/")
+    with open(f"{path}param_array.txt", "a") as file:
+        for run in runfiles:
+            run_id = run["run_id"]
+            file.write(f"runfiles/{run_id}.json results\n")
+
+
+if __name__ == "__main__":
+    files = create_runfiles("../tests", save=False)
+    make_cluster_jobarray("../tests", files)

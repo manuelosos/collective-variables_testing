@@ -1,14 +1,8 @@
-from .run_method import *
+from run_method import *
 import logging
+from sponet_cv_testing.datamanagement import write_misc_data
 
 logger = logging.getLogger("cv_testing.compute")
-
-
-def save_misc_info(path: str, data: dict) -> None:
-    with open(f"{path}misc_data.txt", "a") as file:
-        for key, value in data.items():
-            file.write(f"{key}: {value}\n")
-    return
 
 
 def compute_run(network, parameters: dict, work_path: str):
@@ -29,7 +23,7 @@ def compute_run(network, parameters: dict, work_path: str):
         anchors, samples = sample_anchors(dynamic, sampling_parameters, work_path)
 
         dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
-        save_misc_info(work_path, {"dimension_estimate": dim_estimate})
+        write_misc_data(work_path, {"dimension_estimate": dim_estimate})
 
         linear_regression(simulation_parameters, transition_manifold, anchors, dynamic, work_path)
     except Exception as e:

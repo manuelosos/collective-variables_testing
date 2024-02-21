@@ -1,4 +1,4 @@
-import json
+
 import pickle
 from sponet import CNVMParameters, CNTMParameters
 import numpy as np
@@ -6,7 +6,7 @@ import networkx as nx
 from collections.abc import Iterable
 import logging
 
-from .interpretable_cvs import (
+from interpretable_cvs import (
     TransitionManifold,
     optimize_fused_lasso,
     sample_cnvm,
