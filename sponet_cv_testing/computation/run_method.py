@@ -7,7 +7,7 @@ import networkx as nx
 import numpy as np
 from sponet import CNVMParameters, CNTMParameters
 
-from interpretable_cvs import (
+from sponet_cv_testing.computation.interpretable_cvs import (
     TransitionManifold,
     optimize_fused_lasso,
     sample_cnvm,
