@@ -89,7 +89,8 @@ def approximate_tm(
 ) -> tuple[float, np.ndarray]:
 
     sigma = (dynamic.num_agents / 2) ** 0.5
-    d = 2
+    d = 10
+    #TODO Das dim Problem lösen
 
     trans_manifold = TransitionManifold(sigma, 0.1, d)
 

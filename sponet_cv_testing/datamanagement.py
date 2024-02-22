@@ -9,7 +9,7 @@ import numpy as np
 import csv
 
 # global variables that should be changed if necessary
-data_path: str = "data/"
+data_path: str = "../data/"
 results_csv_path: str = "results/results_table.csv"
 
 logger = logging.getLogger("cv_testing.datamanagement")
@@ -126,7 +126,7 @@ def archive_run_result(source: str) -> None:
 
     network_parameters: dict = parameters["network"]
     if network_parameters["generate_new"]:
-        if network_parameters["archive"]:
+        if "archive" in network_parameters.keys() and network_parameters["archive"]:
             network_id = archive_network(source, network_parameters)
         else:
             network_id = np.nan
@@ -173,6 +173,13 @@ def archive_run_result(source: str) -> None:
     return
 
 
+def archive_dir(path: str):
+
+    dir_list: list = os.listdir(path)
+    for file in dir_list:
+        archive_run_result(f"{path}{file}/")
+
+
 def unique_run_id(run_id: str) -> bool:
     """Checks if a run_id is unique in the archive."""
     df = read_data_csv()
@@ -202,4 +209,5 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 
 if __name__ == "__main__":
-    archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
+    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
+    archive_dir("../tests/tmp_results/")
