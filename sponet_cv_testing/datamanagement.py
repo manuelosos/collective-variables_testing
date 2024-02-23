@@ -6,6 +6,7 @@ import os
 import networkx as nx
 import datetime
 import numpy as np
+from numpy import isclose
 import csv
 
 # global variables that should be changed if necessary
@@ -35,7 +36,8 @@ def read_data_csv() -> pd.DataFrame:
     data_csv = pd.read_csv(
         f"{data_path}{results_csv_path}",
         index_col=0,
-        dtype={"run_id": str}
+        dtype={"run_id": str},
+
     )
     return data_csv
 
@@ -110,7 +112,7 @@ def _get_run_rates(rates: dict) -> tuple[float, float, float, float]:
     """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
     r: np.ndarray = np.array(rates["r"])
     r_tilde: np.ndarray = np.array(rates["r_tilde"])
-    return (r[0, 1], r[1, 0], r_tilde[0, 1], r_tilde[1, 0])
+    return r[0, 1], r[1, 0], r_tilde[0, 1], r_tilde[1, 0]
 
 
 def archive_run_result(source: str) -> None:
@@ -186,6 +188,9 @@ def unique_run_id(run_id: str) -> bool:
     return run_id not in df.index
 
 
+
+
+
 def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
     timestamp: str = datetime.datetime.now().strftime("%y-%m-%d")
@@ -210,4 +215,6 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 if __name__ == "__main__":
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
-    archive_dir("../tests/tmp_results/")
+    #archive_dir("../tests/tmp_results/")
+    pass
+

@@ -1,11 +1,25 @@
-import numpy as np
-import seaborn as sns
+from dash import Dash, html, dash_table
+import plotly.express as px
+import pandas as pd
 import sponet_cv_testing.datamanagement as dm
 
-file_path = "../data/results/CNVM2_ab2_n500_r098-100_rt001-002_l400_a1000_s150/"
-xi = np.load(file_path + "transition_manifold.npy")
-x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
-#params = load_params(file_path + "params.pkl")
-network = dm.open_network(file_path, "network")
 
-print(xi.shape)
+
+df = dm.read_data_csv()
+
+# Initialize the app
+app = Dash(__name__)
+
+# App layout
+app.layout = html.Div([
+    html.Div(children="Run overview"),
+    dash_table.DataTable(data=df.to_dict('records'), page_size=15)
+])
+
+
+def main() -> None:
+    app.run(debug=True)
+
+if __name__ == '__main__':
+    main()
+
