@@ -6,7 +6,6 @@ import os
 import networkx as nx
 import datetime
 import numpy as np
-from numpy import isclose
 import csv
 
 # global variables that should be changed if necessary
@@ -36,8 +35,22 @@ def read_data_csv() -> pd.DataFrame:
     data_csv = pd.read_csv(
         f"{data_path}{results_csv_path}",
         index_col=0,
-        dtype={"run_id": str},
-
+        dtype={
+            "run_id": str,
+            "dynamic_model": str,
+            "r_ab": float,
+            "r_ba": float,
+            "rt_ab": float,
+            "rt_ba": float,
+            "network_id": str,
+            "network_model": str,
+            "num_nodes": int,
+            "lag_time": float,
+            "num_anchor_points": int,
+            "num_samples_per_anchor": int,
+            "cv_dim": int,
+            "dim_estimate": float,
+            "finished": bool}
     )
     return data_csv
 
@@ -146,19 +159,19 @@ def archive_run_result(source: str) -> None:
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
-    misc_data = read_misc_data(source)
-    dimension_estimate: float = float(misc_data["dimension_estimate"])
+    file_list: list[str] = os.listdir(source)
+    if "run_finished.txt" in file_list:
+        finished = True
+        misc_data = read_misc_data(source)
+        dimension_estimate: float = float(misc_data["dimension_estimate"])
+    else:
+        finished = False
+        dimension_estimate = np.nan
 
     results = read_data_csv()
     if run_id in results.index:
         logger.error(f"Run {run_id} has no unique id")
         raise FileExistsError("The run id is not unique")
-
-    file_list: list[str] = os.listdir(source)
-    if "run_finished.txt" in file_list:
-        finished = True
-    else:
-        finished = False
 
     new_result: list = [
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
@@ -188,9 +201,6 @@ def unique_run_id(run_id: str) -> bool:
     return run_id not in df.index
 
 
-
-
-
 def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
     timestamp: str = datetime.datetime.now().strftime("%y-%m-%d")
@@ -215,6 +225,6 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
 
 if __name__ == "__main__":
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
-    #archive_dir("../tests/tmp_results/")
-    pass
+    archive_dir("../tests/tmp_results/")
+
 

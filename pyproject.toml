@@ -20,6 +20,7 @@ optional = true
 seaborn = "^0.13.2"
 matplotlib = "^3.7.1"
 dash = "^2.13.0"
+colorlover = "^0.3.0"
 
 [build-system]
 requires = ["poetry-core"]

@@ -3,6 +3,7 @@ import datetime
 from itertools import product
 import datamanagement as dm
 import pandas as pd
+import numpy as np
 from numpy import isclose
 
 
@@ -29,7 +30,30 @@ def _rates_multiple(row: dict, r_ab, r_ba, rt_ab, rt_ba, lag_time) -> bool:
     return False
 
 
-def run_reasonable(run: dict, change_run: bool = False) -> bool:
+def _create_dummy_entry(parameters) -> list:
+    run_id: str = str(parameters["run_id"])
+
+    dynamic_parameters: dict = parameters["dynamic"]
+    dynamic_model: str = dynamic_parameters["model"]
+    dynamic_rates: tuple = dm._get_run_rates(dynamic_parameters["rates"])
+
+    network_parameters: dict = parameters["network"]
+    network_model = network_parameters["model"]
+    num_nodes = network_parameters["num_nodes"]
+
+    sampling_parameters: dict = parameters["simulation"]["sampling"]
+    lag_time: float = sampling_parameters["lag_time"]
+    num_anchor_points: int = sampling_parameters["num_anchor_points"]
+    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
+    num_coordinates: int = parameters["simulation"]["num_coordinates"]
+
+    new_result: list = [
+        dynamic_model, *dynamic_rates, "", network_model, num_nodes, lag_time, num_anchor_points,
+        num_samples_per_anchor, num_coordinates, "", ""]
+    return new_result
+
+
+def run_reasonable(df, run: dict, change_run: bool = False) -> bool:
     """
     Checks if a run has been done with mathematically equivalent parameters.
     Parameters
@@ -42,7 +66,6 @@ def run_reasonable(run: dict, change_run: bool = False) -> bool:
     bool checks
     """
 
-    df: pd.DataFrame = dm.read_data_csv()
 
     run_id = run["run_id"]
     r_ab, r_ba, rt_ab, rt_ba = dm._get_run_rates(run["dynamic"]["rates"])
@@ -57,7 +80,9 @@ def run_reasonable(run: dict, change_run: bool = False) -> bool:
 
         # swapped ab and ba rates
         if (isclose(row["r_ab"], r_ba) and
+            isclose(row["r_ba"], r_ab) and
                 isclose(row["rt_ab"], rt_ba) and
+                isclose(row["rt_ba"], rt_ab) and
                 isclose(row["lag_time"], lag_time)):
             print(f"Run {run_id}: rates are swapped with run: {index}")
             equivalency = "swap"
@@ -92,19 +117,21 @@ def create_runfiles(path: str, save=True) -> list[dict]:
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [0.98, 1, 1.02, 1.04]
+    r_ab_l = [1, 2, 3, 4, 5]
     r_ba_l = [1]
 
     r_tilde_ab_l = [0.01, 0.02, 0.03]
-    r_tilde_ba_l = [0.02]
+    r_tilde_ba_l = [0.01, 0.02, 0.03]
 
     network_model = "albert-barabasi"
     num_nodes = 500
     num_attachments = 2
 
-    lag_time_l = [4]
+    lag_time_l = [1, 2, 3, 4, 5]
     num_anchor_points_l = [1000]
     num_samples_per_anchor_l = [150]
+
+    df = dm.read_data_csv()
 
     #TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
 
@@ -119,11 +146,10 @@ def create_runfiles(path: str, save=True) -> list[dict]:
                   f"r{_fstr(r_ab)}-{_fstr(r_ba)}_rt{_fstr(r_tilde_ab)}-{_fstr(r_tilde_ba)}"
                   f"_l{_fstr(lag_time)}_a{num_anchor_points}_s{num_samples_per_anchor}")
 
-        if not dm.unique_run_id(run_id):
+        if run_id in df.index:
             print(f"{run_id} already in the dataframe")
             print("No File produced\n")
             continue
-
 
         print(run_id)
 
@@ -157,15 +183,19 @@ def create_runfiles(path: str, save=True) -> list[dict]:
             }
         }
 
-        if run_reasonable(run, change_run=False):
+        if not run_reasonable(df, run, change_run=False):
             print("No file produced")
             continue
+
+        df.loc[run_id] = _create_dummy_entry(run)
 
         if save:
             with open(f"{path}{run_id}.json", "w") as file:
                 json.dump(run, file, indent=3)
 
         runfiles.append(run)
+
+    print(f"{len(runfiles)} files produced")
 
     return runfiles
 
@@ -180,5 +210,5 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]):
 
 
 if __name__ == "__main__":
-    files = create_runfiles("../tests/cluster_runfiles/", save=False)
-    #make_cluster_jobarray("../tests/cluster_runfiles/", files)
+    files = create_runfiles("../tests/cluster_runfiles/", save=True)
+    make_cluster_jobarray("../tests/cluster_runfiles/", files)
