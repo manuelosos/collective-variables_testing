@@ -213,6 +213,11 @@ def create_tabs(tabs_id: str ) -> dcc.Tabs:
                                      style={'width': '10vw'}),
                     ]),
                     html.Div([
+                        html.Label("z-axis:"),
+                        dcc.Dropdown(id="coordinates_plot_dropdown_z",
+                                     style={'width': '10vw'}),
+                    ]),
+                    html.Div([
                         html.Label("color:"),
                         dcc.Dropdown(id="coordinates_plot_dropdown_color",
                                      options=["shares", "weighted_shares"],
@@ -220,7 +225,8 @@ def create_tabs(tabs_id: str ) -> dcc.Tabs:
                                      style={'width': '10vw'})
                     ])
                 ], style={'display': 'flex', 'flex-direction': 'row'}),
-                html.Div(id="coordinates_plot")])
+                html.Div(id="coordinates_plot"),
+                html.Div(id="3d_coordinates_plot")]),
     ])
     return tabs
 
@@ -250,6 +256,8 @@ def update_overview_graph(rows):
     Output("coordinates_plot_dropdown_x", "value"),
     Output("coordinates_plot_dropdown_y", "options"),
     Output("coordinates_plot_dropdown_y", "value"),
+    Output("coordinates_plot_dropdown_z", "options"),
+    Output("coordinates_plot_dropdown_z", "value"),
     Input("data_table", "data"),
     Input("data_table", "selected_rows"),
     prevent_initial_call=True
@@ -262,6 +270,8 @@ def update_coords_plot_dropdown(data, selected_rows):
             "select a run",
             ["select a run"],
             "select a run",
+            ["select a run"],
+            "select a run"
         )
 
 
@@ -274,6 +284,8 @@ def update_coords_plot_dropdown(data, selected_rows):
             "select a run",
             ["select a run"],
             "select a run",
+            ["select a run"],
+            "select a run"
         )
 
     finished_mask = dff["finished"]
@@ -287,7 +299,9 @@ def update_coords_plot_dropdown(data, selected_rows):
         options,
         "1",
         options,
-        "2"
+        "2",
+        options,
+        "3"
     )
 
 
@@ -323,7 +337,28 @@ def update_coordinates_plot(selected_run, dropdown_x, dropdown_y, color):
     return dcc.Graph(figure=fig, mathjax=True, style={'width': '50vw', 'height': '45vh'})
 
 
+@callback(
+    Output("3d_coordinates_plot", "children"),
+    Input("coordinates_plot_selected_runs", "data"),
+    Input("coordinates_plot_dropdown_x", "value"),
+    Input("coordinates_plot_dropdown_y", "value"),
+    Input("coordinates_plot_dropdown_z", "value"),
+    Input("coordinates_plot_dropdown_color", "value")
+)
+def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
+    file_path = f"../data/results/{selected_run}/"
+    xi = np.load(file_path + "transition_manifold.npy")
+    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
+    network = dm.open_network(file_path, "network")
 
+    color_options, colors = calc_colors(x_anchor, network)
+    fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
+                        y=xi[:, int(dropdown_y) - 1],
+                        z=xi[:, int(dropdown_z) - 1],
+                        color=colors[color],
+                        labels={"x": rf"$\xi_{dropdown_x}$", "y": rf"$\xi_{dropdown_y}$", "color": "c"}
+                     )
+    return dcc.Graph(figure=fig, mathjax=True, style={'width': '80vw', 'height': '80vh'})
 
 
 
