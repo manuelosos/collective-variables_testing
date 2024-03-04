@@ -117,7 +117,6 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
     style_data_conditional.extend(colorscale_styles_r)
     style_data_conditional.extend(colorscale_styles_rt)
 
-
     columns_format = [
         dict(id="run_id", name="run_id", selectable=True, type="text"),
         dict(id="r_ab", name="r_ab", selectable=True, type="numeric",

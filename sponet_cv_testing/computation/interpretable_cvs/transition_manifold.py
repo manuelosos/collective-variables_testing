@@ -6,6 +6,7 @@ from numba import njit, prange
 
 logger = logging.getLogger("cv_testing.compute.transition_manifold")
 
+
 class TransitionManifold:
     def __init__(
         self,

@@ -22,8 +22,10 @@ def compute_run(network, parameters: dict, work_path: str):
         sampling_parameters: dict = simulation_parameters["sampling"]
         anchors, samples = sample_anchors(dynamic, sampling_parameters, work_path)
 
-        dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
-        write_misc_data(work_path, {"dimension_estimate": dim_estimate})
+        diffusion_bandwidth, dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
+
+        write_misc_data(work_path, {"diffusion_bandwidth": diffusion_bandwidth,
+                                    "dimension_estimate": dim_estimate})
 
         linear_regression(simulation_parameters, transition_manifold, anchors, dynamic, work_path)
     except Exception as e:
