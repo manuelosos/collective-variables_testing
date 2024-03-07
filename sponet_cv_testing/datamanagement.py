@@ -11,11 +11,6 @@ import csv
 # global variables that should be changed if necessary
 if __name__ == "__main__":
     data_path: str = "../data/"
-else:
-    data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
-
-    results_csv_path: str = "results/results_table.csv"
-
     logger = logging.getLogger("cv_testing.datamanagement")
     logger.setLevel(logging.DEBUG)
 
@@ -33,6 +28,10 @@ else:
 
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+else:
+    data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
+
+results_csv_path: str = "results/results_table.csv"
 
 
 def read_data_csv() -> pd.DataFrame:
