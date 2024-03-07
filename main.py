@@ -13,28 +13,20 @@ logger.setLevel(logging.DEBUG)
 complete_file_handler = logging.FileHandler("complete_log.log")
 complete_file_handler.setLevel(logging.DEBUG)
 
-# Handler that just logs the important messages about the tests
-# test_file_handler = logging.FileHandler("testlog.log")
-# test_file_handler.setLevel(logging.INFO)
-
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 
-compact_formatter = logging.Formatter("%(asctime)s - %(message)s")
+compact_formatter = logging.Formatter("%(name)s - %(asctime)s - %(message)s")
 console_handler.setFormatter(compact_formatter)
-# test_file_handler.setFormatter(compact_formatter)
 
 complete_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 complete_file_handler.setFormatter(complete_formatter)
 
 logger.addHandler(complete_file_handler)
 logger.addHandler(console_handler)
-# logger.addHandler(test_file_handler)
-
-
-# TODO runtime, error logging testen,
 
 # TODO Konsolen Logging fixen. Gerade werden manche messages zweimal in die Konsole geschickt.
+#  -> Liegt daran, dass zwei handler vorhanden sind. Keine Ahnung warum die dann zweimal in die Konsole schicken
 
 def setup() -> tuple[dict, dict]:
     with open("CONFIG.json", "r") as file:

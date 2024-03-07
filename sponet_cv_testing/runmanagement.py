@@ -12,8 +12,6 @@ import sponet_cv_testing.datamanagement as dm
 
 logger = logging.getLogger("cv_testing.runmanagement")
 
-#TODO Logging verfeinern. Run spezifische Sachen sollen in Logs in den workdirs stehen.
-
 
 def get_runfiles(path: str) -> list[dict]:
     """

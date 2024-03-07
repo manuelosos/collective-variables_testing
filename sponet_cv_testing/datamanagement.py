@@ -12,27 +12,27 @@ import csv
 if __name__ == "__main__":
     data_path: str = "../data/"
 else:
-    data_path: str = "data/"
+    data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
 
-results_csv_path: str = "results/results_table.csv"
+    results_csv_path: str = "results/results_table.csv"
 
-logger = logging.getLogger("cv_testing.datamanagement")
-logger.setLevel(logging.DEBUG)
+    logger = logging.getLogger("cv_testing.datamanagement")
+    logger.setLevel(logging.DEBUG)
 
-file_handler = logging.FileHandler(f"{data_path}data_log.log")
-file_handler.setLevel(logging.DEBUG)
+    file_handler = logging.FileHandler(f"{data_path}data_log.log")
+    file_handler.setLevel(logging.DEBUG)
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
 
-compact_formatter = logging.Formatter("%(asctime)s - %(message)s")
-console_handler.setFormatter(compact_formatter)
+    compact_formatter = logging.Formatter("%(asctime)s - %(message)s")
+    console_handler.setFormatter(compact_formatter)
 
-complete_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(complete_formatter)
+    complete_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(complete_formatter)
 
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
 
 def read_data_csv() -> pd.DataFrame:

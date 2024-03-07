@@ -1,8 +1,6 @@
-
 import logging
 import pickle
 from collections.abc import Iterable
-
 import networkx as nx
 import numpy as np
 from sponet import CNVMParameters, CNTMParameters
