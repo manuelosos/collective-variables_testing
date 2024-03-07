@@ -3,9 +3,11 @@ import json
 import time
 import logging
 import networkx as nx
+import sys
+import datetime
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
-import sys
+
 import sponet_cv_testing.datamanagement as dm
 
 logger = logging.getLogger("cv_testing.runmanagement")
@@ -21,8 +23,8 @@ def get_runfiles(path: str) -> list[dict]:
     Parameters
 
     path (str) :
-        Path to the folder containing the json file or to the singe json file itself.
-        If a whole directory is specified the path mus end with "/"
+        Path to the folder containing the json file or to a single json file itself.
+        If a whole directory is specified the path must end with "/"
         Example: the json files are in the directory "test_files" then "[..]/test_files/" must be passed as path.
 
     Returns  (list[dict])
@@ -97,27 +99,35 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
     return network
 
 
-def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_after_error: bool = False) -> None:
-    """Runs the tests specified in the runfiles. The results will be saved in save_path.
+def run_queue(
+        run_files: list[dict], save_path: str, archive_path: str,
+        exit_after_error: bool = False,
+        misc_data: dict=None) -> None:
+    """
+    Runs the tests specified in the runfiles. The results will be saved in save_path.
 
     Parameters
     ----------
     run_files : (list[dict])
-    A list of dictionaries that contain the parameters for the tests.
+        A list of dictionaries that contain the parameters for the tests.
 
     save_path : (str)
-    The path to the folder where the results should be saved.
+        The path to the folder where the results should be saved.
 
     archive_path : (str)
-    The path to the archive. Only needed if network is loaded from existing ones.
+        The path to the archive. Only needed if network is loaded from existing ones.
 
     exit_after_error : (bool)
-    Set to true if the program should exit with system.exit(1) after an error. Default is False
-    Set to true if you want to compute single file runs on cluster.
+        Set to true if the program should exit with system.exit(1) after an error. Default is False
+        Set to true if you want to compute single file runs on cluster.
+
+    misc_data : (dict)
+        A dictionary consisting of additional data that will be saved in misc_data.txt in save_path.
 
     The results will be saved in save_path in folders named by the run_id
 
-    Returns None"""
+    Returns None
+    """
 
     run_times: list[float] = []
     run_ids: list[str] = []
@@ -133,6 +143,9 @@ def run_queue(run_files: list[dict], save_path: str, archive_path: str, exit_aft
 
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
+        dm.write_misc_data(work_path, misc_data)
+        now = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
+        dm.write_misc_data(work_path, {"run_started": now})
 
         try:
             compute_run(network, run_parameters, work_path)
