@@ -50,29 +50,6 @@ def _rates_multiple(row: dict, r_ab, r_ba, rt_ab, rt_ba, lag_time) -> bool:
     return False
 
 
-def _create_dummy_entry(parameters) -> list:
-
-    dynamic_parameters: dict = parameters["dynamic"]
-    dynamic_model: str = dynamic_parameters["model"]
-    dynamic_rates: tuple = dm._get_run_rates(dynamic_parameters["rates"])
-
-    network_parameters: dict = parameters["network"]
-    network_model = network_parameters["model"]
-    num_nodes = network_parameters["num_nodes"]
-
-    sampling_parameters: dict = parameters["simulation"]["sampling"]
-    lag_time: float = sampling_parameters["lag_time"]
-    num_anchor_points: int = sampling_parameters["num_anchor_points"]
-    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
-    num_coordinates: int = parameters["simulation"]["num_coordinates"]
-
-    new_result: list = [
-        dynamic_model, *dynamic_rates, "", network_model, num_nodes, lag_time, num_anchor_points,
-        num_samples_per_anchor, num_coordinates, "", True]
-    # Dummy entries always have "finished" set to True to avoid conflicts while generating multiple reruns
-    return new_result
-
-
 def run_reasonable(
         df: pd.DataFrame,
         run: dict,
@@ -107,7 +84,6 @@ def run_reasonable(
     df = df[(df["dynamic_model"] == run["dynamic"]["model"])
             & (df["network_model"] == run["network"]["model"])
             & (df["num_nodes"] == run["network"]["num_nodes"])]
-
 
     for index, row in df.iterrows():
 
@@ -161,6 +137,29 @@ def run_reasonable(
                 return True, run
             return False, None
     return True, run
+
+
+def _create_dummy_entry(parameters) -> list:
+
+    dynamic_parameters: dict = parameters["dynamic"]
+    dynamic_model: str = dynamic_parameters["model"]
+    dynamic_rates: tuple = dm._get_run_rates(dynamic_parameters["rates"])
+
+    network_parameters: dict = parameters["network"]
+    network_model = network_parameters["model"]
+    num_nodes = network_parameters["num_nodes"]
+
+    sampling_parameters: dict = parameters["simulation"]["sampling"]
+    lag_time: float = sampling_parameters["lag_time"]
+    num_anchor_points: int = sampling_parameters["num_anchor_points"]
+    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
+    num_coordinates: int = parameters["simulation"]["num_coordinates"]
+
+    new_result: list = [
+        dynamic_model, *dynamic_rates, "", network_model, num_nodes, lag_time, num_anchor_points,
+        num_samples_per_anchor, num_coordinates, "", True]
+    # Dummy entries always have "finished" set to True to avoid conflicts while generating multiple reruns
+    return new_result
 
 
 def _fstr(x: float) -> str:
@@ -285,11 +284,35 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]):
     return
 
 
+def get_runfiles(run_ids: str | list[str], data_path: str = "data/results/") -> list[dict]:
+    """Fetches the runfile from one or multiple runs by their run_id."""
+
+    if isinstance(run_ids, str):
+        run_ids = [run_ids]
+
+    runs: list[dict] = []
+    for run_id in run_ids:
+        with open(f"{data_path}{run_id}/parameters.json", "r") as file:
+            run: dict = json.load(file)
+        runs.append(run)
+
+    return runs
+
+
+def get_unfinished_runfiles() -> list[dict]:
+    data = dm.read_data_csv()
+    unfinished_runs = data[data["finished"] == False]
+    return get_runfiles(unfinished_runs.index)
+
+
+
 if __name__ == "__main__":
-    files = create_runfiles(
+    """files = create_runfiles(
         "tests/cluster_runfiles/",
-        save=True,
+        save=False,
         allow_reruns=True,
         allow_failed_reruns=True,
-        change_run=False)
-    make_cluster_jobarray("tests/cluster_runfiles/", files)
+        change_run=False)"""
+    #make_cluster_jobarray("tests/cluster_runfiles/", files)
+print(len(get_unfinished_runfiles()))
+

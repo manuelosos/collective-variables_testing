@@ -152,6 +152,8 @@ def run_queue(
             end_time = time.time()
             run_time = end_time - start_time
             logger.error(f"An Exception occurred in run: {run_id} after {run_time}\nException: {str(err)}\n")
+            with open(f"{work_path}ERROR.txt", "w") as file:
+                file.write(str(err))
             if exit_after_error:
                 sys.exit(1)
         else:

@@ -28,6 +28,7 @@ logger.addHandler(console_handler)
 # TODO Konsolen Logging fixen. Gerade werden manche messages zweimal in die Konsole geschickt.
 #  -> Liegt daran, dass zwei handler vorhanden sind. Keine Ahnung warum die dann zweimal in die Konsole schicken
 
+
 def setup() -> tuple[dict, dict]:
     with open("CONFIG.json", "r") as file:
         config = json.load(file)
@@ -71,3 +72,5 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+sys.exit(0)
