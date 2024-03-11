@@ -124,7 +124,7 @@ def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
     return
 
 
-def _get_run_rates(rates: dict) -> tuple[float, float, float, float]:
+def _translate_run_rates(rates: dict) -> tuple[float, float, float, float]:
     """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
     r: np.ndarray = np.array(rates["r"])
     r_tilde: np.ndarray = np.array(rates["r_tilde"])
@@ -140,7 +140,7 @@ def archive_run_result(source: str) -> None:
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic_model: str = dynamic_parameters["model"]
-    dynamic_rates: tuple = _get_run_rates(dynamic_parameters["rates"])
+    dynamic_rates: tuple = _translate_run_rates(dynamic_parameters["rates"])
 
     network_parameters: dict = parameters["network"]
     if network_parameters["generate_new"]:
@@ -162,6 +162,7 @@ def archive_run_result(source: str) -> None:
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
+
     file_list: list[str] = os.listdir(source)
     if "run_finished.txt" in file_list:
         finished = True
@@ -172,9 +173,15 @@ def archive_run_result(source: str) -> None:
         dimension_estimate = np.nan
 
     results = read_data_csv()
+
     if run_id in results.index:
-        logger.error(f"Run {run_id} has no unique id")
-        raise FileExistsError("The run id is not unique")
+        # If already archived run is unfinished and new run is finished,
+        # the new finished run will overwrite the archived one.
+        if not results.loc[run_id]["finished"] and finished:
+            logger.info(f"Unfinished run with id {run_id} will be overwritten with new finished run.")
+        else:
+            raise FileExistsError("The run id is not unique")
+
 
     new_result: list = [
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
@@ -191,11 +198,12 @@ def archive_run_result(source: str) -> None:
     return
 
 
-def archive_dir(path: str):
+def archive_dir(path: str) -> None:
 
     dir_list: list = os.listdir(path)
     for file in dir_list:
         archive_run_result(f"{path}{file}/")
+    return
 
 
 def unique_run_id(run_id: str) -> bool:
@@ -230,4 +238,4 @@ if __name__ == "__main__":
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
     archive_dir("../tests/tmp_results/")
 
-
+# TODO Erfolgreiche Reruns zulassen

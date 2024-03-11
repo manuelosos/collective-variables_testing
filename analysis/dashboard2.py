@@ -9,8 +9,7 @@ import sponet.collective_variables as cv
 
 app = Dash(__name__)
 
-df = dm.read_data_csv().reset_index()
-
+df = dm.read_data_csv()
 
 def discrete_background_color_bins(df: pd.DataFrame, n_bins: int=5, columns: str | list[str]='all'):
     bounds = [i * (1.0 / n_bins) for i in range(n_bins + 1)]
@@ -63,10 +62,33 @@ def discrete_background_color_bins(df: pd.DataFrame, n_bins: int=5, columns: str
     return (styles, html.Div(legend, style={'padding': '5px 0 5px 0'}))
 
 
+def calc_colors(x, network):
+    color_options = ["shares",
+                     "weighted_shares",
+                     # "interfaces",
+                     # "cluster",
+                     # "custom"
+                     ]
+
+    counts = cv.OpinionShares(3, normalize=True, weights=None)(x)
+    colors = {"shares": counts[:, 0]}
+
+    degree_sequence = np.array([d for n, d in network.degree()])
+    counts = cv.OpinionShares(3, normalize=True, weights=degree_sequence)(x)
+    colors["weighted_shares"] = counts[:, 0]
+
+    # counts = cv.Interfaces(network, True)(x)
+    # colors["interfaces"] = counts[:, 0]
+
+    # weights = calc_weights_biggest_cluster(network)
+    # counts = cv.OpinionShares(2, True, weights)(x)
+    # colors["cluster"] = counts[:, 0]
+
+    return color_options, colors
+
+
 def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
 
-    colorscale_styles_r, _ = discrete_background_color_bins(df, columns=["r_ab", "r_ba"])
-    colorscale_styles_rt, _ = discrete_background_color_bins(df, columns=["rt_ab", "rt_ba"])
     style_data_conditional = [
         {
             'if': {
@@ -89,6 +111,8 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
             "backgroundColor": "RED"
         }
     ]
+    colorscale_styles_r, _ = discrete_background_color_bins(df, columns=["r_ab", "r_ba"])
+    colorscale_styles_rt, _ = discrete_background_color_bins(df, columns=["rt_ab", "rt_ba"])
     style_data_conditional.extend(colorscale_styles_r)
     style_data_conditional.extend(colorscale_styles_rt)
 
@@ -108,9 +132,10 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
              format=Format(precision=3, scheme=Scheme.fixed)),
         dict(id="finished", name="finished", selectable=True, type="text")]
 
+    show_df = data.reset_index()
     table = dash_table.DataTable(
         id=table_id,
-        data=data.to_dict('records'),
+        data=show_df.to_dict('records'),
         columns=columns_format,
         page_size=25,
         page_action="none",
@@ -147,23 +172,134 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
     Input("data_table", "sort_by")
 )
 def sort_table_cb(sort_by):
+    show_df = df.reset_index()
     if len(sort_by):
-        sdata = df.sort_values(
+        sdata = show_df.sort_values(
             [col['column_id'] for col in sort_by],
-            ascending=[
-                col['direction'] == 'asc'
-                for col in sort_by
-            ],
+            ascending=[col['direction'] == 'asc' for col in sort_by],
             inplace=False)
     else:
-        sdata = df
+        sdata = show_df
 
     return sdata.to_dict("records")
+
+
+@callback(
+    Output("data_table", "selected_rows"),
+    Input("unselect_all", "n_clicks")
+)
+def unselect_table_entries(clicks) -> list[int]:
+    return []
+
+
+def create_tabs(tabs_id: str) -> dcc.Tabs:
+    tabs = dcc.Tabs(id=tabs_id, value="tab-1", children=[
+        dcc.Tab(label="Overview Plots",
+                value="tab-1",
+                children=html.Div(id="overview_plot")),
+        dcc.Tab(label="Coordinate Plot",
+                value="tab_2",
+                children=[
+                    html.Div([
+                        html.Div([
+                            html.Label("Runs:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_runs",
+                                         style={"width": "45vw"})
+                        ]),
+                        html.Div([
+                            html.Label("x-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_x",
+                                         value="1",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("y-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_y",
+                                         value="2",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("z-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_z",
+                                         value="3",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("color:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_color",
+                                         options=["shares", "weighted_shares"],
+                                         value="weighted_shares",
+                                         style={'width': '10vw'})
+                        ])
+                    ], style={'display': 'flex', 'flex-direction': 'row'}),
+                    dcc.Graph(
+                        id="3d_coordinates_plot",
+                        mathjax=True,
+                        style={'width': '80vw', 'height': '80vh'})
+                    #html.Div(id="3d_coordinates_plot")
+                ]),
+
+    ])
+    return tabs
+
+
+@callback(Output("coordinates_plot_dropdown_runs", "options"),
+          Input("data_table", "data"),
+          Input("data_table", "selected_rows"))
+def update_coord_plot_run_dd_cb(data, selected_rows: list[int]):
+    if not selected_rows:
+        return []
+    return [data[i]["run_id"] for i in selected_rows]
+
+
+@callback(
+    Output("coordinates_plot_dropdown_x", "options"),
+    Output("coordinates_plot_dropdown_y", "options"),
+    Output("coordinates_plot_dropdown_z", "options"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
+    if run_id is None:
+        return [[""], [""], [""]]
+    run = df.loc[run_id]
+    options = [f"{i}" for i in range(1, run["cv_dim"] + 1)]
+    return [options, options, options]
+
+
+@callback(
+    Output("3d_coordinates_plot", "figure"),
+    Input("coordinates_plot_dropdown_runs", "value"),
+    Input("coordinates_plot_dropdown_x", "value"),
+    Input("coordinates_plot_dropdown_y", "value"),
+    Input("coordinates_plot_dropdown_z", "value"),
+    Input("coordinates_plot_dropdown_color", "value")
+)
+def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
+    if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
+        return {}
+    file_path = f"../data/results/{selected_run}/"
+    xi = np.load(file_path + "transition_manifold.npy")
+    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
+    network = dm.open_network(file_path, "network")
+
+    color_options, colors = calc_colors(x_anchor, network)
+    fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
+                        y=xi[:, int(dropdown_y) - 1],
+                        z=xi[:, int(dropdown_z) - 1],
+                        color=colors[color],
+                        labels={"x": rf"$\xi_{dropdown_x}$", "y": rf"$\xi_{dropdown_y}$", "color": "c"}
+                        )
+    fig.layout.uirevision = 1  # This fixes the orientation over different plots.
+    # TODO funktionalität zum custom ausrichten verschiedener plots entwickeln
+    return fig
+
 
 # App layout
 app.layout = html.Div([
     html.Div(children="Run overview"),
     create_table(df, "data_table"),
+    html.Button("Unselect all", id="unselect_all", n_clicks=0),
+    create_tabs("plot_tabs")
     ])
 
 

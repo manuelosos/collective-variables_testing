@@ -186,7 +186,7 @@ def sort_table(sort_by):
     return sdata.to_dict("records")
 
 
-def create_tabs(tabs_id: str ) -> dcc.Tabs:
+def create_tabs(tabs_id: str) -> dcc.Tabs:
     tabs = dcc.Tabs(id=tabs_id, value="tab-1", children=[
         dcc.Tab(label="Overview",
                 value="tab-1",

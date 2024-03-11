@@ -82,7 +82,7 @@ def run_valid(
     """
 
     run_id = run["run_id"]
-    r_ab, r_ba, rt_ab, rt_ba = dm._get_run_rates(run["dynamic"]["rates"])
+    r_ab, r_ba, rt_ab, rt_ba = dm._translate_run_rates(run["dynamic"]["rates"])
     lag_time = run["simulation"]["sampling"]["lag_time"]
     df = df[(df["dynamic_model"] == run["dynamic"]["model"])
             & (df["network_model"] == run["network"]["model"])
@@ -147,7 +147,7 @@ def _create_dummy_entry(parameters) -> list:
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic_model: str = dynamic_parameters["model"]
-    dynamic_rates: tuple = dm._get_run_rates(dynamic_parameters["rates"])
+    dynamic_rates: tuple = dm._translate_run_rates(dynamic_parameters["rates"])
 
     network_parameters: dict = parameters["network"]
     network_model = network_parameters["model"]
