@@ -5,6 +5,7 @@ import pandas as pd
 from numpy import isclose
 import logging
 import numpy as np
+import datetime
 
 logger = logging.getLogger("runfile_script")
 logger.setLevel(logging.DEBUG)
@@ -15,6 +16,8 @@ compact_formatter = logging.Formatter("%(message)s")
 console_handler.setFormatter(compact_formatter)
 logger.addHandler(console_handler)
 
+network_abbr: dict = {"albert-barabasi": "ab"}
+
 
 def _change_run(run: dict, equiv_run: pd.Series, type: str) -> dict:
 
@@ -22,10 +25,8 @@ def _change_run(run: dict, equiv_run: pd.Series, type: str) -> dict:
 
 
 def _determine_rerun_number(rerun_df: pd.DataFrame) -> int:
-
     index = rerun_df.index
     numbered_index = index[index.str.match(".*r\d\d$")]
-
     if len(numbered_index) == 0:
         return 1
 
@@ -50,7 +51,7 @@ def _rates_multiple(row: dict, r_ab, r_ba, rt_ab, rt_ba, lag_time) -> bool:
     return False
 
 
-def run_reasonable(
+def run_valid(
         df: pd.DataFrame,
         run: dict,
         allow_reruns: bool = False,
@@ -67,15 +68,17 @@ def run_reasonable(
         Parameters of the run
     allow_reruns: (bool)
         If set to True reruns will be allowed. The ID will be appended with a corresponding number
-        i.e. id = id+f"{number_of_rerun}"
+        i.e. id = id+f"{number_of_rerun}". The first run has no number and is implicitly numbered with 0.
+        Breaks if more than 100 runs are made.
     allow_failed_reruns: (bool)
-        Set to True if a run should be repeated even if it has previously failed
+        Set to True if a run should be repeated even if it has previously failed.
     change_run: (bool)
-        If set to True the rates of the proposed run will be changed to the found mathematically equivalent run.
+        If set to True the run will if a mathematically equivalent run is found. In the latter case the rates of the
+        proposed run are changed to match those of the already existing one.
         Only relevant if reruns are allowed. Since this will result in a rerun.
     Returns
     -------
-    bool checks
+    bool True if the run is valid
     """
 
     run_id = run["run_id"]
@@ -126,7 +129,8 @@ def run_reasonable(
                 logger.info("Previous run with same parameters has failed and no reruns of failed runs allowed.")
                 return False, None
 
-            run_number_str = str(_determine_rerun_number(rerun_df)).rjust(2,"0")
+            # first run has no appended number and is thus implicitly numbered with 0
+            run_number_str = str(_determine_rerun_number(rerun_df)).rjust(2, "0")
             run["run_id"] += f"_r{run_number_str}"
             return True, run
 
@@ -171,8 +175,6 @@ def _fstr(x: float) -> str:
 
 
 def create_runfiles(
-        path: str,
-        save: bool = True,
         allow_reruns: bool = False,
         allow_failed_reruns = False,
         change_run: bool = False
@@ -199,8 +201,6 @@ def create_runfiles(
 
     df = dm.read_data_csv()
 
-
-
     # TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
 
     runfiles = []
@@ -210,20 +210,12 @@ def create_runfiles(
                     lag_time_l, num_anchor_points_l, num_samples_per_anchor_l, num_runs_per_set)
             ):
 
-        network_abbr: dict = {"albert-barabasi": "ab"}
 
         run_id = (f"{dynamic}{num_states}_"
                   f"{network_abbr[network_model]}{num_attachments}_n{num_nodes}_"
                   f"r{_fstr(r_ab)}-{_fstr(r_ba)}_rt{_fstr(r_tilde_ab)}-{_fstr(r_tilde_ba)}"
                   f"_l{_fstr(lag_time)}_a{num_anchor_points}_s{num_samples_per_anchor}")
 
-        """
-        if run_id in df.index:
-            if not allow_reruns:
-                print(f"{run_id} already in the dataframe")
-                print("No File produced\n")
-                continue
-        """
         run = {
             "run_id": run_id,
             "dynamic": {
@@ -253,8 +245,9 @@ def create_runfiles(
                 "num_coordinates": 10
             }
         }
-        res, tmp_run = run_reasonable(df, run, allow_reruns, change_run)
-        if not res:
+
+        valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
+        if not valid:
             logger.info(f"no file produced of run {run['run_id']}")
             continue
         if change_run:
@@ -262,11 +255,9 @@ def create_runfiles(
 
         print(run["run_id"])
 
+        # In order to compare with runs created in the same batch,
+        # every run will be added as a dummy entry which will not be saved.
         df.loc[run["run_id"]] = _create_dummy_entry(run)
-
-        if save:
-            with open(f"{path}{run['run_id']}.json", "w") as file:
-                json.dump(run, file, indent=3)
 
         runfiles.append(run)
 
@@ -275,27 +266,29 @@ def create_runfiles(
     return runfiles
 
 
-def make_cluster_jobarray(path: str, runfiles: list[dict]):
+def save_runfiles(save_path: str, runfiles: dict | list[dict]) -> None:
+    """Saves the runfiles to json files in the specified path."""
+    if isinstance(runfiles, dict):
+        runfiles = [runfiles]
 
-    with open(f"{path}param_array.txt", "a") as file:
-        for run in runfiles:
-            run_id = run["run_id"]
-            file.write(f"runfiles/{run_id}.json results\n")
+    if not save_path.endswith("/"):
+        save_path += "/"
+
+    for runfile in runfiles:
+        with open(f"{save_path}{runfile['run_id']}.json", "w") as file:
+            json.dump(runfile, file, indent=3)
     return
 
 
 def get_runfiles(run_ids: str | list[str], data_path: str = "data/results/") -> list[dict]:
     """Fetches the runfile from one or multiple runs by their run_id."""
-
     if isinstance(run_ids, str):
         run_ids = [run_ids]
-
     runs: list[dict] = []
     for run_id in run_ids:
         with open(f"{data_path}{run_id}/parameters.json", "r") as file:
             run: dict = json.load(file)
         runs.append(run)
-
     return runs
 
 
@@ -305,14 +298,41 @@ def get_unfinished_runfiles() -> list[dict]:
     return get_runfiles(unfinished_runs.index)
 
 
+def get_timeout_runs() -> list[dict]:
+    runs = get_unfinished_runfiles()
+    timeout_runs = []
+    data_path: str = "data/results/"
+    for run in runs:
+        with open(f"{data_path}{run['run_id']}/runlog.log", "r") as file:
+            last_log = file.readlines()[-1]
+        if "ARPACK" in last_log:
+            continue
+        timeout_runs.append(run)
+    return timeout_runs
+
+
+def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
+    timestamp = datetime.datetime.now().strftime("%Y_%m_%d")
+    with open(f"{path}{timestamp}_param_array.txt", "a") as file:
+        for run in runfiles:
+            run_id = run["run_id"]
+            file.write(f"runfiles/{run_id}.json results\n")
+    return
+
 
 if __name__ == "__main__":
     """files = create_runfiles(
-        "tests/cluster_runfiles/",
-        save=False,
         allow_reruns=True,
         allow_failed_reruns=True,
         change_run=False)"""
-    #make_cluster_jobarray("tests/cluster_runfiles/", files)
-print(len(get_unfinished_runfiles()))
+    # save_runfiles("tests/cluster_runfiles/", files)
+    # make_cluster_jobarray("tests/cluster_runfiles/", files)
+    res = get_timeout_runs()
+    print(len(res))
+    save_runfiles("tests/cluster_runfiles/", res)
+    make_cluster_jobarray("tests/cluster_runfiles/", res)
+
+
+
+
 

@@ -29,6 +29,6 @@ def compute_run(network, parameters: dict, work_path: str):
 
         linear_regression(simulation_parameters, transition_manifold, anchors, dynamic, work_path)
     except Exception as e:
-        logger.error(str(e))
+        logger.debug(str(e))
         raise e
     return
