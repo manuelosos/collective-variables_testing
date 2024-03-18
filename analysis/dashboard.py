@@ -1,4 +1,4 @@
-from dash import Dash, html, dash_table, Output, Input, callback, dcc
+from dash import Dash, html, dash_table, Output, Input, callback, dcc, Patch, ctx
 from dash.dash_table.Format import Format, Scheme
 from dash.exceptions import PreventUpdate
 import plotly.express as px
@@ -10,7 +10,6 @@ import numpy as np
 import sponet.collective_variables as cv
 import dash
 import networkx as nx
-import sys
 
 app = Dash(__name__)
 
@@ -35,12 +34,8 @@ def create_figure_from_network(network: nx.Graph, x: np.ndarray):
         marker=dict(showscale=True),
         customdata=degrees,
         hovertemplate="Degree: %{customdata}"
-        #hoverinfo='none'
         )
     node_trace.marker.color = np.logical_not(x.astype(bool)).astype(int)
-    #node_trace.marker.color = x
-
-    #CNVM2_ab2_n500_r100-100_rt003-002_l400_a1000_s150
 
     edge_x = []
     edge_y = []
@@ -269,7 +264,6 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                 style={"width": "5vw"}
                             )
                         ]),
-
                         html.Div([
                             html.Label("x-axis:"),
                             dcc.Dropdown(id="coordinates_plot_dropdown_x",
@@ -350,6 +344,7 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
 def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
     if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
         return {}
+
     file_path = f"../data/results/{selected_run}/"
     xi = np.load(file_path + "transition_manifold.npy")
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
@@ -359,24 +354,24 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
                         y=xi[:, int(dropdown_y) - 1],
                         z=xi[:, int(dropdown_z) - 1],
-                        color=colors[color]
-                        )
+                        color=colors[color])
     fig.update_layout(
         scene=dict(
-            xaxis_title=rf"$\xi_{dropdown_x}$",
-            yaxis_title=rf"$\xi_{dropdown_y}$",
-            zaxis_title=rf"$\xi_{dropdown_z}$"
+            xaxis_title_text=rf"$xi_{dropdown_x}$",
+            yaxis_title_text=rf"$xi_{dropdown_y}$",
+            zaxis_title_text=rf"$xi_{dropdown_z}$"
         ),
         clickmode="select"
     )
+
     # TODO Latex zum funktionieren bringen
     fig.layout.uirevision = 1  # This fixes the orientation over different plots.
-    # TODO funktionalität zum custom ausrichten verschiedener plots entwickeln
+    # TODO funktionalität zum custom ausrichten verschiedener plots entwickeln - unwichtig
+    # TODO schauen ob man hier auch patchen kann um Verarbeitung schneller zu machen.
 
     return fig
 
 
-# TODO Optimieren sodass nicht jedes mal der Netzwerk Graph neu generiert werden muss. Vllt dcc.storage verwenden.
 @callback(
     Output("network_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
@@ -385,30 +380,26 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
 def update_network_plot(selected_run, click_data):
     if selected_run is None:
         return {}
+
     file_path = f"../data/results/{selected_run}/"
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
     network = dm.open_network(file_path, "network")
 
-    if click_data is None:
+    if ctx.triggered_id == "coordinates_plot_dropdown_runs":
+
         selected_anchor = x_anchor[np.random.randint(0, x_anchor.shape[0])]
-    else:
-        selected_anchor = x_anchor[click_data["points"][0]["pointNumber"]]
+        network_fig = create_figure_from_network(network, selected_anchor)
+        return network_fig
 
-    network_fig = create_figure_from_network(network, selected_anchor)
+    selected_anchor = x_anchor[click_data["points"][0]["pointNumber"]]
+    fig_patch = Patch()
+    fig_patch["data"][1]["marker"]["color"] = np.logical_not(selected_anchor.astype(bool)).astype(int)
 
-    if click_data is not None:
-        degrees = np.array(list(network.degree))[:, 1:2].astype(int).flatten()
-        anchor_degrees = degrees[selected_anchor.astype(bool)]
-        avg_deg = sum(anchor_degrees) / len(anchor_degrees)
+    # degrees = np.array(list(network.degree))[:, 1:2].astype(int).flatten()
+    # anchor_degrees = degrees[selected_anchor.astype(bool)]
+    # avg_deg = sum(anchor_degrees) / len(anchor_degrees)
 
-        network_fig.update_layout(annotations=[go.layout.Annotation(
-           xref="paper",
-            #yref="paper",
-            text=f"avg_deg {avg_deg}, n: {len(anchor_degrees)}",
-            showarrow=False,
-        )])
-
-    return network_fig
+    return fig_patch
 
 
 # App layout
