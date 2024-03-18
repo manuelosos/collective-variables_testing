@@ -1,15 +1,71 @@
 from dash import Dash, html, dash_table, Output, Input, callback, dcc
 from dash.dash_table.Format import Format, Scheme
+from dash.exceptions import PreventUpdate
 import plotly.express as px
+import plotly.graph_objects as go
 import colorlover
 import pandas as pd
 import sponet_cv_testing.datamanagement as dm
 import numpy as np
 import sponet.collective_variables as cv
+import dash
+import networkx as nx
+import sys
 
 app = Dash(__name__)
 
-df = dm.read_data_csv().reset_index()
+df = dm.read_data_csv()
+df = df[df["dim_estimate"] >= 1]
+
+#TODO Memoisation ausprobieren
+#TODO Option zum merken von "interessanten" Ergebnissen einfügen
+
+def create_figure_from_network(network: nx.Graph, x: np.ndarray):
+    seed = 100
+    pos = nx.spring_layout(network, seed=seed)
+    # pos = nx.planar_layout(network)
+    # pos = nx.kamada_kawai_layout(network)
+    pos = np.array(list(pos.values()))
+
+    degrees = np.array(network.degree)[:, 1:]
+
+    node_trace = go.Scatter(
+        x=pos[:, 0], y=pos[:, 1],
+        mode="markers",
+        marker=dict(showscale=True),
+        customdata=degrees,
+        hovertemplate="Degree: %{customdata}"
+        #hoverinfo='none'
+        )
+    node_trace.marker.color = np.logical_not(x.astype(bool)).astype(int)
+    #node_trace.marker.color = x
+
+    #CNVM2_ab2_n500_r100-100_rt003-002_l400_a1000_s150
+
+    edge_x = []
+    edge_y = []
+    for edge in network.edges():
+        x0, y0 = pos[int(edge[0])]
+        x1, y1 = pos[int(edge[1])]
+
+        edge_x.append(x0)
+        edge_x.append(x1)
+        edge_x.append(None)
+        edge_y.append(y0)
+        edge_y.append(y1)
+        edge_y.append(None)
+
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='#888'), hoverinfo='none')
+
+    layout = go.Layout(
+        showlegend=False,
+        hovermode='closest',
+        margin=dict(b=20, l=5, r=5, t=40),
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+
+    fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
+    return fig
 
 
 def discrete_background_color_bins(df: pd.DataFrame, n_bins: int=5, columns: str | list[str]='all'):
@@ -90,8 +146,6 @@ def calc_colors(x, network):
 
 def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
 
-    colorscale_styles_r, _ = discrete_background_color_bins(df, columns=["r_ab", "r_ba"])
-    colorscale_styles_rt, _ = discrete_background_color_bins(df, columns=["rt_ab", "rt_ba"])
     style_data_conditional = [
         {
             'if': {
@@ -114,6 +168,8 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
             "backgroundColor": "RED"
         }
     ]
+    colorscale_styles_r, _ = discrete_background_color_bins(df, columns=["r_ab", "r_ba"])
+    colorscale_styles_rt, _ = discrete_background_color_bins(df, columns=["rt_ab", "rt_ba"])
     style_data_conditional.extend(colorscale_styles_r)
     style_data_conditional.extend(colorscale_styles_rt)
 
@@ -133,9 +189,10 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
              format=Format(precision=3, scheme=Scheme.fixed)),
         dict(id="finished", name="finished", selectable=True, type="text")]
 
+    show_df = data.reset_index()
     table = dash_table.DataTable(
         id=table_id,
-        data=data.to_dict('records'),
+        data=show_df.to_dict('records'),
         columns=columns_format,
         page_size=25,
         page_action="none",
@@ -171,181 +228,128 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
     Output("data_table", "data"),
     Input("data_table", "sort_by")
 )
-def sort_table(sort_by):
+def sort_table_cb(sort_by):
+    show_df = df.reset_index()
     if len(sort_by):
-        sdata = df.sort_values(
+        sdata = show_df.sort_values(
             [col['column_id'] for col in sort_by],
-            ascending=[
-                col['direction'] == 'asc'
-                for col in sort_by
-            ],
+            ascending=[col['direction'] == 'asc' for col in sort_by],
             inplace=False)
     else:
-        sdata = df
+        sdata = show_df
 
     return sdata.to_dict("records")
 
 
+@callback(
+    Output("data_table", "selected_rows"),
+    Input("unselect_all", "n_clicks")
+)
+def unselect_table_entries(clicks) -> list[int]:
+    return []
+
+
 def create_tabs(tabs_id: str) -> dcc.Tabs:
     tabs = dcc.Tabs(id=tabs_id, value="tab-1", children=[
-        dcc.Tab(label="Overview",
+        dcc.Tab(label="Overview Plots",
                 value="tab-1",
                 children=html.Div(id="overview_plot")),
-        dcc.Tab(
-            label="Coordinate",
-            value="tab-2",
-            children=[
-                dcc.Store(id="coordinates_plot_selected_runs", storage_type="memory"),
-                html.Div([
+        dcc.Tab(label="Coordinate Plot",
+                value="tab_2",
+                children=[
                     html.Div([
-                        html.Label("Runs:"),
-                        dcc.Dropdown(id="coordinates_plot_dropdown_runs",
-                                     style={"width": "45vw"})
-                    ]),
+                        html.Div([
+                            html.Label("Runs:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_runs",
+                                         style={"width": "45vw"}
+                            ),
+                            dcc.Clipboard(
+                                target_id="coordinates_plot_dropdown_runs",
+                                title="Copy run id",
+                                style={"width": "5vw"}
+                            )
+                        ]),
+
+                        html.Div([
+                            html.Label("x-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_x",
+                                         value="1",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("y-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_y",
+                                         value="2",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("z-axis:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_z",
+                                         value="3",
+                                         style={'width': '10vw'}),
+                        ]),
+                        html.Div([
+                            html.Label("color:"),
+                            dcc.Dropdown(id="coordinates_plot_dropdown_color",
+                                         options=["shares", "weighted_shares"],
+                                         value="weighted_shares",
+                                         style={'width': '10vw'})
+                        ])
+                    ],
+                        style={'display': 'flex', 'flex-direction': 'row'}
+                    ),
                     html.Div([
-                        html.Label("x-axis:"),
-                        dcc.Dropdown(id="coordinates_plot_dropdown_x",
-                                     style={'width': '10vw'}),
-                    ]),
-                    html.Div([
-                        html.Label("y-axis:"),
-                        dcc.Dropdown(id="coordinates_plot_dropdown_y",
-                                     style={'width': '10vw'}),
-                    ]),
-                    html.Div([
-                        html.Label("z-axis:"),
-                        dcc.Dropdown(id="coordinates_plot_dropdown_z",
-                                     style={'width': '10vw'}),
-                    ]),
-                    html.Div([
-                        html.Label("color:"),
-                        dcc.Dropdown(id="coordinates_plot_dropdown_color",
-                                     options=["shares", "weighted_shares"],
-                                     value="weighted_shares",
-                                     style={'width': '10vw'})
-                    ])
-                ], style={'display': 'flex', 'flex-direction': 'row'}),
-                html.Div(id="coordinates_plot"),
-                html.Div(id="3d_coordinates_plot")]),
+                        dcc.Graph(
+                            id="3d_coordinates_plot",
+                            mathjax=True,
+                            style={'width': '80vw', 'height': '80vh'}
+                        ),
+                        dcc.Graph(
+                            id="network_plot",
+                            mathjax=True,
+                            style={'width': '80vw', 'height': '80vh'}
+                        )
+                    ], style={'display': 'flex', 'flex-direction': 'row'})
+                ]),
+
     ])
     return tabs
 
 
-@callback(
-    Output("overview_plot", "children"),
-    Input("data_table", "data"),
-)
-def update_overview_graph(rows):
-    dff = pd.DataFrame(rows)
-    dff["ab_ratio"] = dff["r_ab"]/dff["rt_ab"]
-    dff["ba_ratio"] = dff["r_ba"] / dff["rt_ba"]
-    dim_estimate_mean = dff["dim_estimate"].mean()
-    dff["dim_estimate"] = dff["dim_estimate"].fillna(-1)
-
-    fig = (px.parallel_coordinates
-           (dff, color="dim_estimate",
-            dimensions=["ab_ratio", "ba_ratio", "lag_time", "dim_estimate"],
-            color_continuous_midpoint=dim_estimate_mean,
-            color_continuous_scale=px.colors.diverging.Picnic)) #["r_ab", "rt_ab", "r_ba", "rt_ba", "lag_time", "dim_estimate"]))
-    return html.Div(dcc.Graph(figure=fig, mathjax=True))
-
-
-@callback(
-    Output("coordinates_plot_dropdown_runs", "options"),
-    Output("coordinates_plot_dropdown_x", "options"),
-    Output("coordinates_plot_dropdown_x", "value"),
-    Output("coordinates_plot_dropdown_y", "options"),
-    Output("coordinates_plot_dropdown_y", "value"),
-    Output("coordinates_plot_dropdown_z", "options"),
-    Output("coordinates_plot_dropdown_z", "value"),
-    Input("data_table", "data"),
-    Input("data_table", "selected_rows"),
-    prevent_initial_call=True
-)
-def update_coords_plot_dropdown(data, selected_rows):
+@callback(Output("coordinates_plot_dropdown_runs", "options"),
+          Input("data_table", "data"),
+          Input("data_table", "selected_rows"))
+def update_run_dropdown(data, selected_rows: list[int]):
     if not selected_rows:
-        return(
-            ["select a run"],
-            ["select a run"],
-            "select a run",
-            ["select a run"],
-            "select a run",
-            ["select a run"],
-            "select a run"
-        )
-
-
-    dff = pd.DataFrame([data[i] for i in selected_rows])
-
-    if not dff["finished"].any():
-        return (
-            ["select a run"],
-            ["select a run"],
-            "select a run",
-            ["select a run"],
-            "select a run",
-            ["select a run"],
-            "select a run"
-        )
-
-    finished_mask = dff["finished"]
-    dff = dff[finished_mask]
-
-    min_cv_coords: int = dff["cv_dim"].min()
-    options = [f"{i}" for i in range(1, min_cv_coords + 1)]
-
-    return (
-        dff["run_id"].tolist(),
-        options,
-        "1",
-        options,
-        "2",
-        options,
-        "3"
-    )
+        return []
+    return [data[i]["run_id"] for i in selected_rows]
 
 
 @callback(
-    Output("coordinates_plot_selected_runs", "data"),
+    Output("coordinates_plot_dropdown_x", "options"),
+    Output("coordinates_plot_dropdown_y", "options"),
+    Output("coordinates_plot_dropdown_z", "options"),
     Input("coordinates_plot_dropdown_runs", "value")
 )
-def update_coordinates_plot_selected_from_dropdown(value):
-    return value
+def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
+    if run_id is None:
+        return [[""], [""], [""]]
+    run = df.loc[run_id]
+    options = [f"{i}" for i in range(1, run["cv_dim"] + 1)]
+    return [options, options, options]
 
 
 @callback(
-    Output("coordinates_plot", "children"),
-    Input("coordinates_plot_selected_runs", "data"),
-    Input("coordinates_plot_dropdown_x", "value"),
-    Input("coordinates_plot_dropdown_y", "value"),
-    Input("coordinates_plot_dropdown_color", "value")
-)
-def update_coordinates_plot(selected_run, dropdown_x, dropdown_y, color):
-    if not selected_run:
-        return html.Div("No run selected")
-    file_path = f"../data/results/{selected_run}/"
-    xi = np.load(file_path + "transition_manifold.npy")
-    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
-    network = dm.open_network(file_path, "network")
-
-    color_options, colors = calc_colors(x_anchor, network)
-
-    fig = px.scatter(x=xi[:, int(dropdown_x) - 1], y=xi[:, int(dropdown_y) - 1],
-                      color=colors[color],
-                      labels={"x": rf"$\xi_{dropdown_x}$", "y": rf"$\xi_{dropdown_y}$", "color": "c"}
-                      )
-    return dcc.Graph(figure=fig, mathjax=True, style={'width': '50vw', 'height': '45vh'})
-
-
-@callback(
-    Output("3d_coordinates_plot", "children"),
-    Input("coordinates_plot_selected_runs", "data"),
+    Output("3d_coordinates_plot", "figure"),
+    Input("coordinates_plot_dropdown_runs", "value"),
     Input("coordinates_plot_dropdown_x", "value"),
     Input("coordinates_plot_dropdown_y", "value"),
     Input("coordinates_plot_dropdown_z", "value"),
     Input("coordinates_plot_dropdown_color", "value")
 )
 def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
+    if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
+        return {}
     file_path = f"../data/results/{selected_run}/"
     xi = np.load(file_path + "transition_manifold.npy")
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
@@ -355,20 +359,64 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
                         y=xi[:, int(dropdown_y) - 1],
                         z=xi[:, int(dropdown_z) - 1],
-                        color=colors[color],
-                        labels={"x": rf"$\xi_{dropdown_x}$", "y": rf"$\xi_{dropdown_y}$", "color": "c"}
-                     )
-    return dcc.Graph(figure=fig, mathjax=True, style={'width': '80vw', 'height': '80vh'})
+                        color=colors[color]
+                        )
+    fig.update_layout(
+        scene=dict(
+            xaxis_title=rf"$\xi_{dropdown_x}$",
+            yaxis_title=rf"$\xi_{dropdown_y}$",
+            zaxis_title=rf"$\xi_{dropdown_z}$"
+        ),
+        clickmode="select"
+    )
+    # TODO Latex zum funktionieren bringen
+    fig.layout.uirevision = 1  # This fixes the orientation over different plots.
+    # TODO funktionalität zum custom ausrichten verschiedener plots entwickeln
 
+    return fig
+
+
+# TODO Optimieren sodass nicht jedes mal der Netzwerk Graph neu generiert werden muss. Vllt dcc.storage verwenden.
+@callback(
+    Output("network_plot", "figure"),
+    Input("coordinates_plot_dropdown_runs", "value"),
+    Input('3d_coordinates_plot', 'clickData'),
+)
+def update_network_plot(selected_run, click_data):
+    if selected_run is None:
+        return {}
+    file_path = f"../data/results/{selected_run}/"
+    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
+    network = dm.open_network(file_path, "network")
+
+    if click_data is None:
+        selected_anchor = x_anchor[np.random.randint(0, x_anchor.shape[0])]
+    else:
+        selected_anchor = x_anchor[click_data["points"][0]["pointNumber"]]
+
+    network_fig = create_figure_from_network(network, selected_anchor)
+
+    if click_data is not None:
+        degrees = np.array(list(network.degree))[:, 1:2].astype(int).flatten()
+        anchor_degrees = degrees[selected_anchor.astype(bool)]
+        avg_deg = sum(anchor_degrees) / len(anchor_degrees)
+
+        network_fig.update_layout(annotations=[go.layout.Annotation(
+           xref="paper",
+            #yref="paper",
+            text=f"avg_deg {avg_deg}, n: {len(anchor_degrees)}",
+            showarrow=False,
+        )])
+
+    return network_fig
 
 
 # App layout
 app.layout = html.Div([
     html.Div(children="Run overview"),
     create_table(df, "data_table"),
-    create_tabs("main_tabs")
-
-
+    html.Button("Unselect all", id="unselect_all", n_clicks=0),
+    create_tabs("plot_tabs")
     ])
 
 
@@ -378,4 +426,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-

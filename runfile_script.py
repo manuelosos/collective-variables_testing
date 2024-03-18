@@ -182,17 +182,17 @@ def create_runfiles(
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [0.99, 1, 1.01]
-    r_ba_l = [1]
+    r_ab_l = [0.5, 1, 1.5, 2, 2.25]
+    r_ba_l = [0.5, 1, 1.5, 2]
 
-    r_tilde_ab_l = [0.01, 0.02, 0.03]
-    r_tilde_ba_l = [0.02, 0.03, 0.04]
+    r_tilde_ab_l = [0.02, 0.04, 0.06]
+    r_tilde_ba_l = [0.02, 0.04, 0.06]
 
     network_model = "albert-barabasi"
     num_nodes = 500
     num_attachments = 2
 
-    lag_time_l = [4.8, 4.9, 5, 5.1, 5.2]
+    lag_time_l = [1,2,3]
     #np.arange(4.5, 5.6, 0.1)
     num_anchor_points_l = [1000]
     num_samples_per_anchor_l = [150]
@@ -329,8 +329,6 @@ if __name__ == "__main__":
     # make_cluster_jobarray("tests/cluster_runfiles/", files)
     res = get_timeout_runs()
     print(len(res))
-    save_runfiles("tests/cluster_runfiles/", res)
-    make_cluster_jobarray("tests/cluster_runfiles/", res)
 
 
 
