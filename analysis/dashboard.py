@@ -1,6 +1,5 @@
 from dash import Dash, html, dash_table, Output, Input, callback, dcc, Patch, ctx
 from dash.dash_table.Format import Format, Scheme
-from dash.exceptions import PreventUpdate
 import plotly.express as px
 import plotly.graph_objects as go
 import colorlover
@@ -8,7 +7,6 @@ import pandas as pd
 import sponet_cv_testing.datamanagement as dm
 import numpy as np
 import sponet.collective_variables as cv
-import dash
 import networkx as nx
 
 app = Dash(__name__)
@@ -16,8 +14,6 @@ app = Dash(__name__)
 df = dm.read_data_csv()
 df = df[df["dim_estimate"] >= 1]
 
-#TODO Memoisation ausprobieren
-#TODO Option zum merken von "interessanten" Ergebnissen einfügen
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):
     seed = 100
@@ -292,6 +288,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     ],
                         style={'display': 'flex', 'flex-direction': 'row'}
                     ),
+
                     html.Div([
                         dcc.Graph(
                             id="3d_coordinates_plot",
@@ -304,6 +301,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             style={'width': '80vw', 'height': '80vh'}
                         )
                     ], style={'display': 'flex', 'flex-direction': 'row'})
+
                 ]),
 
     ])
@@ -366,8 +364,6 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
 
     # TODO Latex zum funktionieren bringen
     fig.layout.uirevision = 1  # This fixes the orientation over different plots.
-    # TODO funktionalität zum custom ausrichten verschiedener plots entwickeln - unwichtig
-    # TODO schauen ob man hier auch patchen kann um Verarbeitung schneller zu machen.
 
     return fig
 

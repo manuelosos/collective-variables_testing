@@ -50,8 +50,13 @@ The network dict has the following attributes
   * States the model of the network see network models for a list of the allowed networks
 * **num_nodes**: integer (generate_new=true)
   * Number of nodes that the network should have
-* **num_attachments**: integer (model="albert-barabasi)
-  * Parameter for the albert-barabasi model. Determines to how many nodes a new node attaches.
+* **num_attachments**: integer (model="albert-barabasi", "holme-kim")
+  * Parameter for models with preferential attachment. Determines to how many nodes a new node attaches.
+* **triad_probability**: float (model="holme-kim")
+  * Parameter for the holme-kim model. 
+  Determines the probability that a newly attached node forms a triad with the neighbors of the already existing node. 
+
+
 
 The simulation dict has the following attributes
 * **sampling**: dictionary

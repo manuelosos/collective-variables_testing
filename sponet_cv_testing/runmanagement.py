@@ -75,6 +75,12 @@ def generate_network(network_parameters: dict, save_path: str, filename: str="ne
     if model == "albert-barabasi":
         num_attachments: int = network_parameters["num_attachments"]
         network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
+
+    elif model == "holme-kim":
+        num_attachments: int = network_parameters["num_attachments"]
+        triad_probability: float = network_parameters["triad_probability"]
+        network = nx.powerlaw_cluster_graph(num_nodes, num_attachments, triad_probability)
+
     else:
         raise ValueError(f"Unknown network model: {model}")
 

@@ -11,12 +11,13 @@ logger = logging.getLogger("runfile_script")
 logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.DEBUG)
 compact_formatter = logging.Formatter("%(message)s")
 console_handler.setFormatter(compact_formatter)
 logger.addHandler(console_handler)
 
-network_abbr: dict = {"albert-barabasi": "ab"}
+network_abbr: dict = {"albert-barabasi": "ab",
+                      "holme-kim": "hk"}
 
 
 def _change_run(run: dict, equiv_run: pd.Series, type: str) -> dict:
@@ -88,9 +89,8 @@ def run_valid(
             & (df["network_model"] == run["network"]["model"])
             & (df["num_nodes"] == run["network"]["num_nodes"])]
 
+    equivalency: str | None = None
     for index, row in df.iterrows():
-
-        equivalency: str | None = None
 
         # run already existing
         rerun_df = df[df.index.str.match("^" + run_id + ".*$") == True]
@@ -100,7 +100,7 @@ def run_valid(
 
         # swapped ab and ba rates
         if (isclose(row["r_ab"], r_ba) and
-            isclose(row["r_ba"], r_ab) and
+                isclose(row["r_ba"], r_ab) and
                 isclose(row["rt_ab"], rt_ba) and
                 isclose(row["rt_ba"], rt_ab) and
                 isclose(row["lag_time"], lag_time)):
@@ -108,17 +108,14 @@ def run_valid(
             equivalency = "swap"
 
         # rates and lag_time multiple of another
-        if _rates_multiple(row, r_ab, r_ba, rt_ab, rt_ba, lag_time):
+        elif _rates_multiple(row, r_ab, r_ba, rt_ab, rt_ba, lag_time):
             logger.debug(f"Run {run_id}: Rates are multiple of another run: {index}")
             equivalency = "multiple"
 
         # both cases above combined
-        if _rates_multiple(row, r_ba, r_ab, rt_ba, rt_ab, lag_time):
+        elif _rates_multiple(row, r_ba, r_ab, rt_ba, rt_ab, lag_time):
             logger.debug(f"Run {run_id}: Rates are swapped multiple of another run: {index}")
             equivalency = "swap multiple"
-
-        if equivalency is None:
-            return True, run
 
         if equivalency == "rerun":
             if not allow_reruns:
@@ -140,7 +137,9 @@ def run_valid(
                 run = _change_run(run, row, equivalency)
                 return True, run
             return False, None
-    return True, run
+
+    if equivalency is None:
+        return True, run
 
 
 def _create_dummy_entry(parameters) -> list:
@@ -182,37 +181,44 @@ def create_runfiles(
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [0.5, 1, 1.5, 2, 2.25]
-    r_ba_l = [0.5, 1, 1.5, 2]
+    r_ab_l = [1, 1.5, 2]
+    r_ba_l = [1, 1.5, 2]
 
-    r_tilde_ab_l = [0.02, 0.04, 0.06]
-    r_tilde_ba_l = [0.02, 0.04, 0.06]
+    r_tilde_ab_l = [0.01, 0.02]
+    r_tilde_ba_l = [0.01, 0.02]
 
-    network_model = "albert-barabasi"
+
+
+    network_model = "holme-kim"
     num_nodes = 500
     num_attachments = 2
+    triad_probabilities = [0.25, 0.5, 0.75]
+    if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [1,2,3]
-    #np.arange(4.5, 5.6, 0.1)
+    lag_time_l = [1, 2, 3]
     num_anchor_points_l = [1000]
     num_samples_per_anchor_l = [150]
 
-    num_runs_per_set: list[int] = list(range(4))
+    num_runs_per_set: list[int] = list(range(1))
 
     df = dm.read_data_csv()
 
     # TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
 
     runfiles = []
-    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, lag_time, num_anchor_points, num_samples_per_anchor, _ in \
+    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor, _ in \
             (
-            product(r_ab_l, r_ba_l, r_tilde_ab_l, r_tilde_ba_l,
+            product(r_ab_l, r_ba_l, r_tilde_ab_l, r_tilde_ba_l, triad_probabilities,
                     lag_time_l, num_anchor_points_l, num_samples_per_anchor_l, num_runs_per_set)
             ):
 
+        if network_model == "albert-barabasi":
+            network_id_str = f"{network_abbr[network_model]}{num_attachments}_n{num_nodes}_"
+        elif network_model == "holme-kim":
+            network_id_str = f"{network_abbr[network_model]}{num_attachments}-{_fstr(triad_p)}_n{num_nodes}_"
 
         run_id = (f"{dynamic}{num_states}_"
-                  f"{network_abbr[network_model]}{num_attachments}_n{num_nodes}_"
+                  f"{network_id_str}"
                   f"r{_fstr(r_ab)}-{_fstr(r_ba)}_rt{_fstr(r_tilde_ab)}-{_fstr(r_tilde_ba)}"
                   f"_l{_fstr(lag_time)}_a{num_anchor_points}_s{num_samples_per_anchor}")
 
@@ -231,7 +237,7 @@ def create_runfiles(
             },
             "network": {
                 "generate_new": True,
-                "model": "albert-barabasi",
+                "model": network_model,
                 "num_nodes": num_nodes,
                 "num_attachments": num_attachments
             },
@@ -245,6 +251,9 @@ def create_runfiles(
                 "num_coordinates": 10
             }
         }
+
+        if network_model == "holme-kim":
+            run["network"]["triad_probabilty"] = triad_p
 
         valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
         if not valid:
@@ -321,14 +330,14 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    """files = create_runfiles(
-        allow_reruns=True,
+    files = create_runfiles(
+        allow_reruns=False,
         allow_failed_reruns=True,
-        change_run=False)"""
+        change_run=False)
+    print(len(files))
     # save_runfiles("tests/cluster_runfiles/", files)
     # make_cluster_jobarray("tests/cluster_runfiles/", files)
-    res = get_timeout_runs()
-    print(len(res))
+
 
 
 
