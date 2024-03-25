@@ -11,7 +11,9 @@ import networkx as nx
 
 app = Dash(__name__)
 
-df = dm.read_data_csv()
+# Adjust path in following function call if necessary
+df = dm.read_data_csv("../data/results/results_table.csv")
+# Pre-filtering of the data can be done here
 df = df[df["dim_estimate"] >= 1]
 
 
@@ -252,6 +254,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                         html.Div([
                             html.Label("Runs:"),
                             dcc.Dropdown(id="coordinates_plot_dropdown_runs",
+                                         placeholder="Select entries in the table above by clicking on the boxes on the left side.",
                                          style={"width": "45vw"}
                             ),
                             dcc.Clipboard(

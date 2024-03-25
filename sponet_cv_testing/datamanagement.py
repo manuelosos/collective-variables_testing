@@ -34,9 +34,19 @@ else:
 results_csv_path: str = "results/results_table.csv"
 
 
-def read_data_csv() -> pd.DataFrame:
+def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
+    """
+    Parameters
+    ----------
+    path : (str)
+        path to the results_csv.
+    Returns
+    -------
+        DataFrame containing the relevant values of every run.
+
+    """
     data_csv = pd.read_csv(
-        f"{data_path}{results_csv_path}",
+        path,
         index_col=0,
         dtype={
             "run_id": str,

@@ -253,7 +253,7 @@ def create_runfiles(
         }
 
         if network_model == "holme-kim":
-            run["network"]["triad_probabilty"] = triad_p
+            run["network"]["triad_probability"] = triad_p
 
         valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
         if not valid:
@@ -334,9 +334,8 @@ if __name__ == "__main__":
         allow_reruns=False,
         allow_failed_reruns=True,
         change_run=False)
-    print(len(files))
-    # save_runfiles("tests/cluster_runfiles/", files)
-    # make_cluster_jobarray("tests/cluster_runfiles/", files)
+    save_runfiles("tests/cluster_runfiles/", files)
+    make_cluster_jobarray("tests/cluster_runfiles/", files)
 
 
 
