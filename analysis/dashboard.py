@@ -11,8 +11,10 @@ import networkx as nx
 
 app = Dash(__name__)
 
+results_path: str = "../data/results/"
+
 # Adjust path in following function call if necessary
-df = dm.read_data_csv("../data/results/results_table.csv")
+df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
 df = df[df["dim_estimate"] >= 1]
 
@@ -346,7 +348,7 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
         return {}
 
-    file_path = f"../data/results/{selected_run}/"
+    file_path = f"{results_path}{selected_run}/"
     xi = np.load(file_path + "transition_manifold.npy")
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
     network = dm.open_network(file_path, "network")
@@ -380,7 +382,7 @@ def update_network_plot(selected_run, click_data):
     if selected_run is None:
         return {}
 
-    file_path = f"../data/results/{selected_run}/"
+    file_path = f"{results_path}{selected_run}/"
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
     network = dm.open_network(file_path, "network")
 
