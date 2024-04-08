@@ -11,12 +11,13 @@ import networkx as nx
 
 app = Dash(__name__)
 
+# Adjust path in following function call if necessary
 results_path: str = "../data/results/"
 
-# Adjust path in following function call if necessary
+
 df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
-df = df[df["dim_estimate"] >= 1]
+#df = df[df["dim_estimate"] >= 1]
 
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):

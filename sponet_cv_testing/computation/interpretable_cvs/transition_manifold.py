@@ -1,5 +1,4 @@
 import logging
-
 import numpy as np
 import scipy.sparse.linalg as sla
 from numba import njit, prange

@@ -26,6 +26,7 @@ def _change_run(run: dict, equiv_run: pd.Series, type: str) -> dict:
 
 
 def _determine_rerun_number(rerun_df: pd.DataFrame) -> int:
+    """Determines the number of the rerun based on the existing number of reruns in the rerun_df."""
     index = rerun_df.index
     numbered_index = index[index.str.match(".*r\d\d$")]
     if len(numbered_index) == 0:
@@ -187,8 +188,6 @@ def create_runfiles(
     r_tilde_ab_l = [0.01, 0.02]
     r_tilde_ba_l = [0.01, 0.02]
 
-
-
     network_model = "holme-kim"
     num_nodes = 500
     num_attachments = 2
@@ -204,6 +203,7 @@ def create_runfiles(
     df = dm.read_data_csv()
 
     # TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
+
 
     runfiles = []
     for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor, _ in \
@@ -275,6 +275,10 @@ def create_runfiles(
     return runfiles
 
 
+def make_reruns(runfile: dict, num_runs: int) -> list[dict]:
+
+
+
 def save_runfiles(save_path: str, runfiles: dict | list[dict]) -> None:
     """Saves the runfiles to json files in the specified path."""
     if isinstance(runfiles, dict):
@@ -301,14 +305,14 @@ def get_runfiles(run_ids: str | list[str], data_path: str = "data/results/") -> 
     return runs
 
 
-def get_unfinished_runfiles() -> list[dict]:
+def get_unfinished_runs() -> list[dict]:
     data = dm.read_data_csv()
     unfinished_runs = data[data["finished"] == False]
     return get_runfiles(unfinished_runs.index)
 
 
 def get_timeout_runs() -> list[dict]:
-    runs = get_unfinished_runfiles()
+    runs = get_unfinished_runs()
     timeout_runs = []
     data_path: str = "data/results/"
     for run in runs:
@@ -330,12 +334,28 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    files = create_runfiles(
+    """files = create_runfiles(
         allow_reruns=False,
         allow_failed_reruns=True,
         change_run=False)
     save_runfiles("tests/cluster_runfiles/", files)
-    make_cluster_jobarray("tests/cluster_runfiles/", files)
+    make_cluster_jobarray("tests/cluster_runfiles/", files)"""
+
+    runs = get_unfinished_runs()
+    error_runs = []
+    data_path: str = "data/results/"
+    for run in runs:
+        with open(f"{data_path}{run['run_id']}/runlog.log", "r") as file:
+            last_log = file.readlines()[-1]
+        if "ARPACK" in last_log:
+            error_runs.append(run)
+
+
+
+
+
+
+
 
 
 

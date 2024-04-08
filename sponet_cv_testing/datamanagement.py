@@ -157,7 +157,7 @@ def archive_run_result(source: str) -> None:
         if "archive" in network_parameters.keys() and network_parameters["archive"]:
             network_id = archive_network(source, network_parameters)
         else:
-            network_id = np.nan
+            network_id = np.nan  # Network id is given when the network is reused for another test.
         network_model = network_parameters["model"]
         num_nodes = network_parameters["num_nodes"]
     else:
