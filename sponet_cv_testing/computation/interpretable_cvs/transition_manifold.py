@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import scipy.sparse.linalg as sla
 from numba import njit, prange
+from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
 
 logger = logging.getLogger("cv_testing.compute.transition_manifold")
 
@@ -77,15 +78,35 @@ class TransitionManifold:
         self.bandwidth_diffusion_map = optim_epsilon ** 0.5
         self.dimension_estimate = derivative[optim_idx]
 
+        logger.debug(f"Optimal bandwidth: {self.bandwidth_diffusion_map}")
+
         return epsilons, s, derivative
 
     def calc_diffusion_map(self):
         if self.distance_matrix is None:
             raise RuntimeError("No distance matrix available. Call the set_distance_matrix method first!")
 
-        self.eigenvalues, self.eigenvectors = calc_diffusion_maps(
-            self.distance_matrix, self.num_coordinates, self.bandwidth_diffusion_map
-        )
+        try:
+            self.eigenvalues, self.eigenvectors = calc_diffusion_maps(
+                self.distance_matrix, self.num_coordinates, self.bandwidth_diffusion_map
+            )
+        except (ArpackError, ArpackNoConvergence) as e:
+
+            logger.debug("Arpackerror occurred. Checking if bandwidth is below threshold")
+
+            bandwidth_tolerance: float = np.max(self.distance_matrix) / np.sqrt(20)
+
+            if self.bandwidth_diffusion_map < bandwidth_tolerance:
+                logger.debug(
+                    f"Sigma {self.bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
+                    f"Set sigma to {bandwidth_tolerance}")
+                self.eigenvalues, self.eigenvectors = calc_diffusion_maps(
+                    self.distance_matrix, self.num_coordinates, bandwidth_tolerance
+                )
+            else:
+                logger.error("Bandwidth not below threshold.")
+                raise e
+
         return self.eigenvectors.real[:, 1:] * self.eigenvalues.real[np.newaxis, 1:]
 
     def average_kernel_matrix(self, epsilon) -> float:

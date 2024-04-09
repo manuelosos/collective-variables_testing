@@ -76,7 +76,6 @@ def sample_anchors(
 
     np.savez_compressed(f"{save_path}x_data", x_anchor=x_anchor, x_samples=x_samples)
 
-    logger.info(f"Finished sampling")
     return x_anchor, x_samples
 
 
@@ -99,7 +98,6 @@ def approximate_tm(
     dimension_estimate = trans_manifold.dimension_estimate
 
     np.save(f"{save_path}transition_manifold", xi)
-    logger.info(f"Finished approximating")
     return bandwidth, dimension_estimate, xi
 
 
@@ -121,12 +119,10 @@ def linear_regression(
     alphas, colors = optimize_fused_lasso(anchors, xi, network, pen_vals, performance_threshold=0.999)
 
     np.savez(f"{save_path}cv_optim.npz", alphas=alphas, xi_fit=colors)
-    logger.info("Finished linear regression")
 
     xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions)
     with open(f"{save_path}cv.pkl", "wb") as file:
         pickle.dump(xi_cv, file)
-    logger.info("Finished")
 
     # pre-weighting
     weights = np.array([d for _, d in network.degree()])
@@ -142,6 +138,5 @@ def linear_regression(
     xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions, weights=weights)
     with open(f"{save_path}cv_degree_weighted.pkl", "wb") as file:
         pickle.dump(xi_cv, file)
-    logger.info("Finished")
 
     return

@@ -275,9 +275,15 @@ def create_runfiles(
     return runfiles
 
 
-def make_reruns(runfile: dict, num_runs: int) -> list[dict]:
+def make_rerunfiles(run: dict, number_of_reruns: int ):
 
+    reruns = []
+    for i in range(1, number_of_reruns+1):
+        tmp_run = run.copy()
+        tmp_run["run_id"] += f"_{i}"
+        reruns.append(tmp_run)
 
+    return reruns
 
 def save_runfiles(save_path: str, runfiles: dict | list[dict]) -> None:
     """Saves the runfiles to json files in the specified path."""
@@ -347,8 +353,24 @@ if __name__ == "__main__":
     for run in runs:
         with open(f"{data_path}{run['run_id']}/runlog.log", "r") as file:
             last_log = file.readlines()[-1]
+            print(last_log)
+
         if "ARPACK" in last_log:
             error_runs.append(run)
+
+
+
+
+    #print(len(runfiles))
+
+    #save_runfiles("tests/eigenval_reruns/", runfiles)
+    #make_cluster_jobarray("tests/eigenval_reruns/", runfiles)
+
+
+
+
+
+
 
 
 
