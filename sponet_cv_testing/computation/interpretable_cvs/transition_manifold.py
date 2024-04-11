@@ -98,7 +98,7 @@ class TransitionManifold:
 
             if self.bandwidth_diffusion_map < bandwidth_tolerance:
                 logger.debug(
-                    f"Sigma {self.bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
+                    f"#slb Sigma {self.bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
                     f"Set sigma to {bandwidth_tolerance}")
                 self.eigenvalues, self.eigenvectors = calc_diffusion_maps(
                     self.distance_matrix, self.num_coordinates, bandwidth_tolerance

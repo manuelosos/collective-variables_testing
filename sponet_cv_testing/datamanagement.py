@@ -7,6 +7,7 @@ import networkx as nx
 import datetime
 import numpy as np
 import csv
+from dataclasses import dataclass
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
@@ -32,6 +33,13 @@ else:
     data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
 
 results_csv_path: str = "results/results_table.csv"
+
+
+
+
+
+
+
 
 
 def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
@@ -63,7 +71,8 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
             "num_samples_per_anchor": int,
             "cv_dim": int,
             "dim_estimate": float,
-            "finished": bool}
+            "finished": bool,
+            "remarks": str}
     )
     return data_csv
 
@@ -134,6 +143,21 @@ def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
     return
 
 
+def read_logs(path: str) -> list[str]:
+
+    remarks: list[str] = []
+    with open(f"{path}runlog.log", "r") as logfile:
+        logs = logfile.readlines()
+
+    for line in logs:
+        if "#slb" in line:
+            remarks.append("#slb")
+            continue
+
+    return remarks
+
+
+
 def _translate_run_rates(rates: dict) -> tuple[float, float, float, float]:
     """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
     r: np.ndarray = np.array(rates["r"])
@@ -196,6 +220,8 @@ def archive_run_result(source: str) -> None:
             logger.info(f"Run is not unique and not sucesful run {run_id} will be skipped.")
             return
 
+    remarks = read_logs(source)
+
     new_result: list = [
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
         num_samples_per_anchor, num_coordinates, dimension_estimate, finished]
@@ -251,8 +277,35 @@ def generate_unique_run_id(n: int = 1, name: str = "") -> list[str]:
     return run_ids
 
 
-if __name__ == "__main__":
-    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
-    archive_dir("../tests/tmp_results/")
+class RunResult:
+    run_id: str
+    dynamic_model: str
+    r_ab: float
+    r_ba: float
+    rt_ab: float
+    rt_ba: float
+    network_id: str | None
+    network_model: str
+    num_nodes: int
+    lag_time: float
+    num_anchor_points: int
+    num_samples_per_anchor: int
+    cv_dim: int
+    dim_estimate: float
+    finished: bool
 
+
+
+
+if __name__ == "__main__":
+    pass
+    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
+    #archive_dir("../tests/tmp_results/")
+
+
+
+
+
+
+    #print(df["remarks"])
 # TODO Erfolgreiche Reruns zulassen

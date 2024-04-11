@@ -17,7 +17,7 @@ results_path: str = "../data/results/"
 
 df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
-#df = df[df["dim_estimate"] >= 1]
+df = df[df["dim_estimate"] >= 1]
 
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):
@@ -306,8 +306,16 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             mathjax=True,
                             style={'width': '80vw', 'height': '80vh'}
                         )
-                    ], style={'display': 'flex', 'flex-direction': 'row'})
+                    ], style={'display': 'flex', 'flex-direction': 'row'}),
 
+                    html.Div(
+                        children=[
+                            html.H4("Logs"),
+                            html.Pre("Krass hier steht text",
+                                     id="runlog")
+                            ],
+                        #id="runlog"
+                    )
                 ]),
 
     ])
@@ -321,6 +329,19 @@ def update_run_dropdown(data, selected_rows: list[int]):
     if not selected_rows:
         return []
     return [data[i]["run_id"] for i in selected_rows]
+
+
+@callback(
+    Output("runlog", "children"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_logs(selected_run: str) -> str:
+    if selected_run is None:
+        return ""
+    file_path = f"{results_path}{selected_run}/"
+    with open(file_path+"runlog.log", "r") as logfile:
+        logs = logfile.readlines()
+    return "".join(logs)
 
 
 @callback(
