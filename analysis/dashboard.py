@@ -162,6 +162,13 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
                 "column_id": "finished"
             },
             "backgroundColor": "RED"
+        },
+        {
+            "if": {
+                "filter_query": "{remarks} contains 'slb'",
+                "column_id": "dim_estimate"
+            },
+            "backgroundColor": "YELLOW"
         }
     ]
     colorscale_styles_r, _ = discrete_background_color_bins(df, columns=["r_ab", "r_ba"])
@@ -183,7 +190,9 @@ def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
              format=Format(precision=1, scheme=Scheme.fixed)),
         dict(id="dim_estimate", name="dim_estimate", selectable=True, type="numeric",
              format=Format(precision=3, scheme=Scheme.fixed)),
-        dict(id="finished", name="finished", selectable=True, type="text")]
+        dict(id="finished", name="finished", selectable=True, type="text"),
+        dict(id="remarks", name="remarks", selectable=True, type="text")
+    ]
 
     show_df = data.reset_index()
     table = dash_table.DataTable(
