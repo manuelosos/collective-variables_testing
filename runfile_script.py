@@ -39,13 +39,30 @@ def _rates_multiple(row: dict, r_ab, r_ba, rt_ab, rt_ba, lag_time) -> bool:
     """
     Checks if the rates and lag time specified in row are a multiple of the given rates.
     """
-    r_ab_ratio = row["r_ab"] / r_ab
-    r_ba_ration = row["r_ba"] / r_ba
-    rt_ab_ratio = row["rt_ab"] / rt_ab
-    rt_ba_ratio = row["rt_ba"] / rt_ba
+
+    if r_ab == 0:
+        r_ab_ratio = np.infty
+    else:
+        r_ab_ratio = row["r_ab"] / r_ab
+
+    if r_ba == 0:
+        r_ba_ratio = np.infty
+    else:
+        r_ba_ratio = row["r_ba"] / r_ba
+
+    if rt_ab == 0:
+        rt_ab_ratio = np.infty
+    else:
+        rt_ab_ratio = row["rt_ab"] / rt_ab
+
+    if rt_ba == 0:
+        rt_ba_ratio = np.infty
+    else:
+        rt_ba_ratio = row["rt_ba"] / rt_ba
+
     lag_time_ratio = row["lag_time"] / lag_time
 
-    if (isclose(r_ab_ratio, r_ba_ration) and
+    if (isclose(r_ab_ratio, r_ba_ratio) and
             isclose(r_ab_ratio, rt_ab_ratio) and
             isclose(r_ab_ratio, rt_ba_ratio) and
             isclose(r_ab_ratio, lag_time_ratio)):
@@ -161,7 +178,7 @@ def _create_dummy_entry(parameters) -> list:
 
     new_result: list = [
         dynamic_model, *dynamic_rates, "", network_model, num_nodes, lag_time, num_anchor_points,
-        num_samples_per_anchor, num_coordinates, "", True]
+        num_samples_per_anchor, num_coordinates, "", True,""]
     # Dummy entries always have "finished" set to True to avoid conflicts while generating multiple reruns
     return new_result
 
@@ -182,19 +199,19 @@ def create_runfiles(
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [1, 1.5, 2]
-    r_ba_l = [1, 1.5, 2]
+    r_ab_l = [0]
+    r_ba_l = [1, 1.5, 2, 3, 4, 5]
 
-    r_tilde_ab_l = [0.01, 0.02]
-    r_tilde_ba_l = [0.01, 0.02]
+    r_tilde_ab_l = [0, 0.01, 0.02, 0.03]
+    r_tilde_ba_l = [0, 0.01, 0.02, 0.03]
 
-    network_model = "holme-kim"
+    network_model = "albert-barabasi"
     num_nodes = 500
     num_attachments = 2
-    triad_probabilities = [0.25, 0.5, 0.75]
+    triad_probabilities = [1]
     if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [1, 2, 3]
+    lag_time_l = [1, 2, 3, 4]
     num_anchor_points_l = [1000]
     num_samples_per_anchor_l = [150]
 
@@ -255,7 +272,8 @@ def create_runfiles(
         if network_model == "holme-kim":
             run["network"]["triad_probability"] = triad_p
 
-        valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
+        #valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
+        valid,tmp_run = True, "fdf"
         if not valid:
             logger.info(f"no file produced of run {run['run_id']}")
             continue
@@ -340,23 +358,16 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    """files = create_runfiles(
+    files = create_runfiles(
         allow_reruns=False,
         allow_failed_reruns=True,
         change_run=False)
-    save_runfiles("tests/cluster_runfiles/", files)
-    make_cluster_jobarray("tests/cluster_runfiles/", files)"""
+    print(files)
+    print(len(files))
+    #save_runfiles("tests/cluster_runfiles/", files)
+    #make_cluster_jobarray("tests/cluster_runfiles/", files)
 
-    runs = get_unfinished_runs()
-    error_runs = []
-    data_path: str = "data/results/"
-    for run in runs:
-        with open(f"{data_path}{run['run_id']}/runlog.log", "r") as file:
-            last_log = file.readlines()[-1]
-            print(last_log)
 
-        if "ARPACK" in last_log:
-            error_runs.append(run)
 
 
 

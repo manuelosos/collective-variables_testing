@@ -7,6 +7,7 @@ import networkx as nx
 import datetime
 import numpy as np
 import csv
+import re
 from dataclasses import dataclass
 
 # global variables that should be changed if necessary
@@ -75,6 +76,13 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
             "remarks": str}
     )
     return data_csv
+
+
+def save_csv(df: pd.DataFrame) -> None:
+
+    df.to_csv(f"{data_path}{results_csv_path}")
+    logger.info("csv saved")
+    return
 
 
 def read_misc_data(source: str) -> dict:
@@ -157,6 +165,28 @@ def read_logs(path: str) -> list[str]:
     return remarks
 
 
+def change_run_id(run_id: str, new_run_id: str) -> None:
+
+    raise NotImplementedError
+    # TODO zum laufen bringen gerade zerschießt es die Daten
+
+    with open(f"{data_path}results/{run_id}/parameters.json", "r") as runfile:
+        parameters = json.load(runfile)
+
+    parameters["run_id"] = new_run_id
+
+    result_df = read_data_csv()
+
+
+    result_df.at["run_id", run_id] = new_run_id
+
+    with open(f"{data_path}results/{run_id}/parameters.json", "w") as runfile:
+        json.dump(parameters, runfile, indent=3)
+    save_csv(result_df)
+
+    logger.info(f"#ridch {run_id} -> {new_run_id}")
+    return
+
 
 def _translate_run_rates(rates: dict) -> tuple[float, float, float, float]:
     """Returns the rates of the run in a list. Only accepts Type 1 Parameters of CNVM."""
@@ -224,10 +254,10 @@ def archive_run_result(source: str) -> None:
 
     new_result: list = [
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
-        num_samples_per_anchor, num_coordinates, dimension_estimate, finished]
+        num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
 
     results.loc[run_id] = new_result
-    results.to_csv(f"{data_path}{results_csv_path}")
+    save_csv(results)
     logger.info(f"archived run {run_id} in csv.")
 
     logger.debug(f"Starting moving files from {source} to {data_path}results/")
@@ -302,6 +332,16 @@ if __name__ == "__main__":
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
     #archive_dir("../tests/tmp_results/")
 
+    df = read_data_csv()
+    ids = df.index.tolist()
+
+    for run_id in ids:
+
+        if re.match(".*_\d\d$", run_id):
+            end = run_id[-2:]
+
+            new_run_id = re.sub("_\d\d$", "_r" + end, run_id)
+            change_run_id(run_id, new_run_id)
 
 
 

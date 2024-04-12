@@ -1,4 +1,4 @@
-from dash import Dash, html, dash_table, Output, Input, callback, dcc, Patch, ctx
+from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx
 from dash.dash_table.Format import Format, Scheme
 import plotly.express as px
 import plotly.graph_objects as go
@@ -8,6 +8,7 @@ import sponet_cv_testing.datamanagement as dm
 import numpy as np
 import sponet.collective_variables as cv
 import networkx as nx
+import re
 
 app = Dash(__name__)
 
@@ -17,7 +18,7 @@ results_path: str = "../data/results/"
 
 df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
-df = df[df["dim_estimate"] >= 1]
+#df = df[df["dim_estimate"] >= 1]
 
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):
@@ -64,7 +65,7 @@ def create_figure_from_network(network: nx.Graph, x: np.ndarray):
     return fig
 
 
-def discrete_background_color_bins(df: pd.DataFrame, n_bins: int=5, columns: str | list[str]='all'):
+def discrete_background_color_bins(df: pd.DataFrame, n_bins: int = 5, columns: str | list[str]='all'):
     bounds = [i * (1.0 / n_bins) for i in range(n_bins + 1)]
     if columns == 'all':
         if 'id' in df:
@@ -138,6 +139,21 @@ def calc_colors(x, network):
     # colors["cluster"] = counts[:, 0]
 
     return color_options, colors
+
+
+def get_reruns(data, run_id: str) -> list[str]:
+
+
+    reruns = []
+    compare_run_id = re.sub("_r\d\d$","", run_id)
+
+    for i in range(len(data)):
+        entry = data[i]["run_id"]
+        if re.sub("_r\d\d$", "", entry) == compare_run_id:
+            if entry != run_id:
+                reruns.append(entry)
+
+    return reruns
 
 
 def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
@@ -263,12 +279,13 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                 value="tab_2",
                 children=[
                     html.Div([
+                        # Dropdowns #####################
                         html.Div([
                             html.Label("Runs:"),
                             dcc.Dropdown(id="coordinates_plot_dropdown_runs",
                                          placeholder="Select entries in the table above by clicking on the boxes on the left side.",
                                          style={"width": "45vw"}
-                            ),
+                                        ),
                             dcc.Clipboard(
                                 target_id="coordinates_plot_dropdown_runs",
                                 title="Copy run id",
@@ -305,6 +322,10 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     ),
 
                     html.Div([
+                        html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
+                    ]),
+
+                    html.Div([
                         dcc.Graph(
                             id="3d_coordinates_plot",
                             mathjax=True,
@@ -333,11 +354,25 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
 
 @callback(Output("coordinates_plot_dropdown_runs", "options"),
           Input("data_table", "data"),
-          Input("data_table", "selected_rows"))
-def update_run_dropdown(data, selected_rows: list[int]):
+          Input("data_table", "selected_rows"),
+          Input("add_reruns_button", "n_clicks"),
+          State("coordinates_plot_dropdown_runs", "value")
+          )
+def update_run_dropdown(data, selected_rows: list[int], _, selected_run):
     if not selected_rows:
         return []
-    return [data[i]["run_id"] for i in selected_rows]
+
+    selected_rows_values = [data[i]["run_id"] for i in selected_rows]
+
+    reruns = []
+    if ctx.triggered_id == "add_reruns_button":
+        reruns = get_reruns(data, selected_run)
+        selected_rows_values.extend(reruns)
+
+    return  selected_rows_values
+
+
+
 
 
 @callback(
@@ -448,4 +483,6 @@ def main() -> None:
 
 
 if __name__ == '__main__':
+
     main()
+    #get_reruns(df, "CNVM2_ab2_n500_r225-100_rt004-004_l300_a1000_s150_r02")
