@@ -81,7 +81,6 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
 def save_csv(df: pd.DataFrame) -> None:
 
     df.to_csv(f"{data_path}{results_csv_path}")
-    logger.info("csv saved")
     return
 
 
@@ -151,7 +150,7 @@ def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
     return
 
 
-def read_logs(path: str) -> list[str]:
+def read_logs(path: str) -> str:
 
     remarks: list[str] = []
     with open(f"{path}runlog.log", "r") as logfile:
@@ -162,7 +161,7 @@ def read_logs(path: str) -> list[str]:
             remarks.append("#slb")
             continue
 
-    return remarks
+    return " ".join(remarks)
 
 
 def change_run_id(run_id: str, new_run_id: str) -> None:
@@ -266,7 +265,7 @@ def archive_run_result(source: str) -> None:
 
 
     shutil.move(source, f"{data_path}results/")
-    logger.info(f"Finished moving files from {source} to {data_path}resul    ts/")
+    logger.info(f"Finished moving files from {source} to {data_path}results/")
 
     return
 
@@ -325,24 +324,16 @@ class RunResult:
     finished: bool
 
 
-
-
 if __name__ == "__main__":
-    pass
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
     #archive_dir("../tests/tmp_results/")
 
     df = read_data_csv()
-    ids = df.index.tolist()
+    df = df.replace("[]", "")
 
-    for run_id in ids:
+    print(df["remarks"] == "[]")
 
-        if re.match(".*_\d\d$", run_id):
-            end = run_id[-2:]
-
-            new_run_id = re.sub("_\d\d$", "_r" + end, run_id)
-            change_run_id(run_id, new_run_id)
-
+    df.to_csv("test")
 
 
 

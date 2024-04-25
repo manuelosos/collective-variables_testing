@@ -143,7 +143,6 @@ def calc_colors(x, network):
 
 def get_reruns(data, run_id: str) -> list[str]:
 
-
     reruns = []
     compare_run_id = re.sub("_r\d\d$","", run_id)
 

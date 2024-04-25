@@ -20,7 +20,7 @@ def compute_run(network, parameters: dict, work_path: str):
         simulation_parameters: dict = parameters["simulation"]
 
         sampling_parameters: dict = simulation_parameters["sampling"]
-        anchors, samples = sample_anchors(dynamic, sampling_parameters, work_path)
+        anchors, samples = sample_anchors(dynamic, sampling_parameters, dynamic_parameters, work_path)
 
         diffusion_bandwidth, dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
 

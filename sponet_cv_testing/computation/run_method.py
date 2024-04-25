@@ -65,7 +65,10 @@ def sample_anchors(
         dynamic.network, dynamic.num_opinions, num_anchor_points, 5
     )
 
-    short_integration_time: float = lag_time/10
+    # Set short_integration_time dependent on maximal rate
+    max_rate = max(np.max(dynamic.r), np.max(dynamic.r_tilde))
+
+    short_integration_time: float = lag_time/10/max_rate
     logger.debug(f"Starting short integration lag_time {short_integration_time}")
     x_anchor = integrate_anchor_points(
         x_anchor, dynamic, short_integration_time
