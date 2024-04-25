@@ -105,7 +105,9 @@ def run_valid(
     lag_time = run["simulation"]["sampling"]["lag_time"]
     df = df[(df["dynamic_model"] == run["dynamic"]["model"])
             & (df["network_model"] == run["network"]["model"])
-            & (df["num_nodes"] == run["network"]["num_nodes"])]
+            & (df["num_nodes"] == run["network"]["num_nodes"])
+            & (df["num_anchor_points"] == run["simulation"]["sampling"]["num_anchor_points"])
+            & (df["num_samples_per_anchor"] == run["simulation"]["sampling"]["num_samples_per_anchor"])]
 
     equivalency: str | None = None
     for index, row in df.iterrows():
@@ -192,18 +194,20 @@ def _fstr(x: float) -> str:
 
 
 def create_runfiles(
+        check_validity: bool = True,
         allow_reruns: bool = False,
-        allow_failed_reruns = False,
-        change_run: bool = False
+        allow_failed_reruns: bool= False,
+        change_run: bool = False,
+
 ) -> list[dict]:
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [0]
-    r_ba_l = [1, 1.5, 2, 3, 4, 5]
+    r_ab_l = [1.5]
+    r_ba_l = [1]
 
-    r_tilde_ab_l = [0, 0.01, 0.02, 0.03]
-    r_tilde_ba_l = [0, 0.01, 0.02, 0.03]
+    r_tilde_ab_l = [0.02]
+    r_tilde_ba_l = [0.02]
 
     network_model = "albert-barabasi"
     num_nodes = 500
@@ -211,11 +215,11 @@ def create_runfiles(
     triad_probabilities = [1]
     if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [1, 2, 3, 4]
-    num_anchor_points_l = [1000]
-    num_samples_per_anchor_l = [150]
+    lag_time_l = [1]
+    num_anchor_points_l = [2000]
+    num_samples_per_anchor_l = [300]
 
-    num_runs_per_set: list[int] = list(range(1))
+    num_runs_per_set = 5 # seems dumb but works
 
     df = dm.read_data_csv()
 
@@ -223,10 +227,10 @@ def create_runfiles(
 
 
     runfiles = []
-    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor, _ in \
+    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor in \
             (
             product(r_ab_l, r_ba_l, r_tilde_ab_l, r_tilde_ba_l, triad_probabilities,
-                    lag_time_l, num_anchor_points_l, num_samples_per_anchor_l, num_runs_per_set)
+                    lag_time_l, num_anchor_points_l, num_samples_per_anchor_l)
             ):
 
         if network_model == "albert-barabasi":
@@ -272,13 +276,14 @@ def create_runfiles(
         if network_model == "holme-kim":
             run["network"]["triad_probability"] = triad_p
 
-        #valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
-        valid,tmp_run = True, "fdf"
-        if not valid:
-            logger.info(f"no file produced of run {run['run_id']}")
-            continue
-        if change_run:
-            run = tmp_run
+        if check_validity:
+            valid, tmp_run = run_valid(df, run, allow_reruns, allow_failed_reruns, change_run)
+
+            if not valid:
+                logger.info(f"no file produced of run {run['run_id']}")
+                continue
+            if change_run:
+                run = tmp_run
 
         print(run["run_id"])
 
@@ -288,13 +293,18 @@ def create_runfiles(
 
         runfiles.append(run)
 
+        if num_runs_per_set > 1:
+            runfiles.extend(make_rerunfiles(run, num_runs_per_set-1))
+
+
     print(f"{len(runfiles)} files produced")
 
+    if num_runs_per_set > 1:
+        print("Warning: Reruns may be duplicates")
     return runfiles
 
 
-def make_rerunfiles(run: dict, number_of_reruns: int ):
-
+def make_rerunfiles(run: dict, number_of_reruns: int) -> list[dict]:
     reruns = []
     for i in range(1, number_of_reruns+1):
         tmp_run = run.copy()
@@ -357,41 +367,22 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
     return
 
 
+
+
 if __name__ == "__main__":
     files = create_runfiles(
-        allow_reruns=False,
+        check_validity=False,
+        allow_reruns=True,
         allow_failed_reruns=True,
         change_run=False)
-    print(files)
-    print(len(files))
-    #save_runfiles("tests/cluster_runfiles/", files)
-    #make_cluster_jobarray("tests/cluster_runfiles/", files)
+
+    for file in files:
+        print(file["run_id"])
+
+    save_runfiles("tests/cluster_runfiles/", files)
+    make_cluster_jobarray("tests/cluster_runfiles/", files)
 
 
-
-
-
-
-    #print(len(runfiles))
-
-    #save_runfiles("tests/eigenval_reruns/", runfiles)
-    #make_cluster_jobarray("tests/eigenval_reruns/", runfiles)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    #runs = get_runfiles(["CNVM2_ab2_n500_r100-100_rt001-001_l100_a1000_s150",
+     #                  "CNVM2_ab2_n500_r150-100_rt002-002_l100_a1000_s150"])
 

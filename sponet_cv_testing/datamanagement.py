@@ -237,6 +237,7 @@ def archive_run_result(source: str) -> None:
 
     results = read_data_csv()
 
+    """
     overwrite: bool = False
     if run_id in results.index:
         # If already archived run is unfinished and new run is finished,
@@ -248,6 +249,7 @@ def archive_run_result(source: str) -> None:
             #raise FileExistsError("The run id is not unique")
             logger.info(f"Run is not unique and not sucesful run {run_id} will be skipped.")
             return
+    """
 
     remarks = read_logs(source)
 
@@ -260,9 +262,9 @@ def archive_run_result(source: str) -> None:
     logger.info(f"archived run {run_id} in csv.")
 
     logger.debug(f"Starting moving files from {source} to {data_path}results/")
-    if overwrite:
+    # new runs always overwrite exisiting ones
+    if run_id in results.index:
         shutil.rmtree(f"{data_path}results/{run_id}/")
-
 
     shutil.move(source, f"{data_path}results/")
     logger.info(f"Finished moving files from {source} to {data_path}results/")
