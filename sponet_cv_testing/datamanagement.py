@@ -257,17 +257,18 @@ def archive_run_result(source: str) -> None:
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
         num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
 
-    results.loc[run_id] = new_result
-    save_csv(results)
-    logger.info(f"archived run {run_id} in csv.")
-
-    logger.debug(f"Starting moving files from {source} to {data_path}results/")
-    # new runs always overwrite exisiting ones
     if run_id in results.index:
         shutil.rmtree(f"{data_path}results/{run_id}/")
 
+    results.loc[run_id] = new_result
+
+
+    logger.debug(f"Starting moving files from {source} to {data_path}results/")
+
     shutil.move(source, f"{data_path}results/")
     logger.info(f"Finished moving files from {source} to {data_path}results/")
+    save_csv(results)
+    logger.info(f"archived run {run_id} in csv.")
 
     return
 
@@ -330,13 +331,17 @@ if __name__ == "__main__":
     #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
     #archive_dir("../tests/tmp_results/")
 
+    #df = read_data_csv()
+    #df = df.replace("[]", "")
+
+    #print(df["remarks"] == "[]")
+
+    #df.to_csv("test")
+
     df = read_data_csv()
-    df = df.replace("[]", "")
 
-    print(df["remarks"] == "[]")
-
-    df.to_csv("test")
-
+    print(df.columns)
+    df[df["num_anchor_points"] == 2000].to_csv("new_data.csv")
 
 
 

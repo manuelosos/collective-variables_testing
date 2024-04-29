@@ -144,13 +144,15 @@ def calc_colors(x, network):
 def get_reruns(data, run_id: str) -> list[str]:
 
     reruns = []
-    compare_run_id = re.sub("_r\d\d$","", run_id)
+
+    compare_run_id = re.sub("_r?\d{1,2}$","", run_id)
 
     for i in range(len(data)):
         entry = data[i]["run_id"]
-        if re.sub("_r\d\d$", "", entry) == compare_run_id:
+        if re.sub("_r?\d{1,2}$", "", entry) == compare_run_id:
             if entry != run_id:
                 reruns.append(entry)
+
 
     return reruns
 
