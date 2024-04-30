@@ -9,6 +9,7 @@ import numpy as np
 import sponet.collective_variables as cv
 import networkx as nx
 import re
+import json
 
 app = Dash(__name__)
 
@@ -287,11 +288,16 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          placeholder="Select entries in the table above by clicking on the boxes on the left side.",
                                          style={"width": "45vw"}
                                         ),
-                            dcc.Clipboard(
-                                target_id="coordinates_plot_dropdown_runs",
-                                title="Copy run id",
-                                style={"width": "5vw"}
-                            )
+                            html.Div([
+                                html.Div([
+                                    html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
+                                ]),
+                                dcc.Clipboard(
+                                    target_id="coordinates_plot_dropdown_runs",
+                                    title="Copy run id",
+                                    style={"width": "2vw"}
+                                ),
+                            ], style={'display': 'flex', 'flex-direction': 'row'})
                         ]),
                         html.Div([
                             html.Label("x-axis:"),
@@ -322,9 +328,32 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                         style={'display': 'flex', 'flex-direction': 'row'}
                     ),
 
+
+
+
                     html.Div([
-                        html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
+                        html.Table([
+                            html.Thead(
+                                html.Tr([
+                                    html.Td("r_ab"),
+                                    html.Td("r_ba"),
+                                    html.Td("rt_ab"),
+                                    html.Td("r_ba"),
+                                ])
+                            ),
+                            html.Tbody([
+                                html.Tr([
+                                    html.Td(id="selected_run_r_ab"),
+                                    html.Td(id="selected_run_r_ba"),
+                                    html.Td(id="selected_run_rt_ab"),
+                                    html.Td(id="selected_run_rt_ba"),
+                                ])
+
+                            ])
+                            ], style={"border": "1px solid"}
+                        )
                     ]),
+
                     #################Plots
                     html.Div([
                         dcc.Graph(
@@ -388,17 +417,7 @@ def update_run_dropdown(data, selected_rows: list[int], _, selected_run):
 
 
 
-@callback(
-    Output("runlog", "children"),
-    Input("coordinates_plot_dropdown_runs", "value")
-)
-def update_logs(selected_run: str) -> str:
-    if selected_run is None:
-        return ""
-    file_path = f"{results_path}{selected_run}/"
-    with open(file_path+"runlog.log", "r") as logfile:
-        logs = logfile.readlines()
-    return "".join(logs)
+
 
 
 @callback(
@@ -416,19 +435,20 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
 
 
 @callback(
-    Output("cv_weight_plot","figure"),
+    Output("selected_run_r_ab", "children"),
+    Output("selected_run_r_ba", "children"),
+    Output("selected_run_rt_ab", "children"),
+    Output("selected_run_rt_ba", "children"),
     Input("coordinates_plot_dropdown_runs", "value")
 )
-def update_cv_weight_plot(selected_run: str):
+def update_selected_run_specifics_table(selected_run: str):
     if selected_run is None:
-        return {}
-
+        return(["" for i in range(4)])
     file_path = f"{results_path}{selected_run}/"
-    cv_optim = np.load(file_path + "cv_optim.npz")
-    xi_fit = cv_optim["xi_fit"]
-    fig = px.violin(xi_fit[:, :], points="all")
+    with open(file_path+"parameters.json", "r") as file:
+        run_params = json.load(file)
+    return dm._translate_run_rates(run_params["dynamic"]["rates"])
 
-    return fig
 
 
 @callback(
@@ -496,6 +516,35 @@ def update_network_plot(selected_run, click_data):
     # avg_deg = sum(anchor_degrees) / len(anchor_degrees)
 
     return fig_patch
+
+
+@callback(
+    Output("cv_weight_plot","figure"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_cv_weight_plot(selected_run: str):
+    if selected_run is None:
+        return {}
+
+    file_path = f"{results_path}{selected_run}/"
+    cv_optim = np.load(file_path + "cv_optim.npz")
+    xi_fit = cv_optim["xi_fit"]
+    fig = px.violin(xi_fit[:, :], points="all")
+
+    return fig
+
+
+@callback(
+    Output("runlog", "children"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_logs(selected_run: str) -> str:
+    if selected_run is None:
+        return ""
+    file_path = f"{results_path}{selected_run}/"
+    with open(file_path+"runlog.log", "r") as logfile:
+        logs = logfile.readlines()
+    return "".join(logs)
 
 
 # App layout
