@@ -94,13 +94,16 @@ def approximate_tm(
 
     trans_manifold = TransitionManifold(sigma, 0.1, d)
 
-    logger.info(f"Starting approximating transition manifold with dimension={d}")
+    logger.info(f"Approximating transition manifold with dimension={d}")
     xi = trans_manifold.fit(samples, optimize_bandwidth=True)
 
     bandwidth = trans_manifold.bandwidth_diffusion_map
     dimension_estimate = trans_manifold.dimension_estimate
+    eigenvalues = trans_manifold.eigenvalues
 
+    np.save(f"{save_path}eigenvalues", eigenvalues)
     np.save(f"{save_path}transition_manifold", xi)
+    logger.info("Saved diffusion maps and eigenvalues.")
     return bandwidth, dimension_estimate, xi
 
 

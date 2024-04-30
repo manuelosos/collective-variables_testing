@@ -18,7 +18,7 @@ results_path: str = "../data/results/"
 
 df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
-#df = df[df["dim_estimate"] >= 1]
+df = df[df["dim_estimate"] >= 1]
 
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):
@@ -272,10 +272,10 @@ def unselect_table_entries(clicks) -> list[int]:
 
 
 def create_tabs(tabs_id: str) -> dcc.Tabs:
-    tabs = dcc.Tabs(id=tabs_id, value="tab-1", children=[
-        dcc.Tab(label="Overview Plots",
-                value="tab-1",
-                children=html.Div(id="overview_plot")),
+    tabs = dcc.Tabs(id=tabs_id, value="tab_2", children=[
+        #dcc.Tab(label="Overview Plots",
+         #       value="tab_1",
+          #      children=html.Div(id="overview_plot")),
         dcc.Tab(label="Coordinate Plot",
                 value="tab_2",
                 children=[
@@ -325,28 +325,40 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     html.Div([
                         html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
                     ]),
-
+                    #################Plots
                     html.Div([
                         dcc.Graph(
                             id="3d_coordinates_plot",
                             mathjax=True,
-                            style={'width': '80vw', 'height': '80vh'}
+                            style={'width': '60vw', 'height': '80vh'}
                         ),
                         dcc.Graph(
                             id="network_plot",
                             mathjax=True,
-                            style={'width': '80vw', 'height': '80vh'}
+                            style={'width': '40vw', 'height': '80vh'}
                         )
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
-
+                    #################Plots and Logs
                     html.Div(
                         children=[
-                            html.H4("Logs"),
-                            html.Pre("Krass hier steht text",
-                                     id="runlog")
-                            ],
-                        #id="runlog"
-                    )
+                            html.Div(
+                                children=[
+                                    dcc.Graph(
+                                        id="cv_weight_plot",
+                                        mathjax=True,
+                                        style={'width': '60vw', 'height': '40vh'}
+                                    ),
+                                ]
+                            ),
+                            html.Div(
+                                children=[
+                                    html.H4("Logs"),
+                                    html.Pre("Krass hier steht text",
+                                             id="runlog")
+                                ]
+                            ),
+
+                        ], style={'display': 'flex', 'flex-direction': 'row'})
                 ]),
 
     ])
@@ -404,6 +416,22 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
 
 
 @callback(
+    Output("cv_weight_plot","figure"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_cv_weight_plot(selected_run: str):
+    if selected_run is None:
+        return {}
+
+    file_path = f"{results_path}{selected_run}/"
+    cv_optim = np.load(file_path + "cv_optim.npz")
+    xi_fit = cv_optim["xi_fit"]
+    fig = px.violin(xi_fit[:, :], points="all")
+
+    return fig
+
+
+@callback(
     Output("3d_coordinates_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input("coordinates_plot_dropdown_x", "value"),
@@ -427,14 +455,14 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
                         color=colors[color])
     fig.update_layout(
         scene=dict(
-            xaxis_title_text=rf"$xi_{dropdown_x}$",
-            yaxis_title_text=rf"$xi_{dropdown_y}$",
-            zaxis_title_text=rf"$xi_{dropdown_z}$"
+            xaxis_title_text=rf"dim {dropdown_x}",
+            yaxis_title_text=rf"dim {dropdown_y}",
+            zaxis_title_text=rf"dim {dropdown_z}"
         ),
+        font_size=15,
         clickmode="select"
     )
 
-    # TODO Latex zum funktionieren bringen
     fig.layout.uirevision = 1  # This fixes the orientation over different plots.
 
     return fig
