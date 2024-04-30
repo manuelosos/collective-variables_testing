@@ -19,7 +19,7 @@ results_path: str = "../data/results/"
 
 df = dm.read_data_csv(f"{results_path}results_table.csv")
 # Pre-filtering of the data can be done here
-df = df[df["dim_estimate"] >= 1]
+#df = df[df["dim_estimate"] >= 1]
 
 
 def create_figure_from_network(network: nx.Graph, x: np.ndarray):
@@ -359,12 +359,12 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                         dcc.Graph(
                             id="3d_coordinates_plot",
                             mathjax=True,
-                            style={'width': '60vw', 'height': '80vh'}
+                            style={'width': '60vw', 'height': '70vh'}
                         ),
                         dcc.Graph(
                             id="network_plot",
                             mathjax=True,
-                            style={'width': '40vw', 'height': '80vh'}
+                            style={'width': '40vw', 'height': '70vh'}
                         )
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
                     #################Plots and Logs
@@ -379,16 +379,33 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                     ),
                                 ]
                             ),
-                            html.Div(
-                                children=[
-                                    html.H4("Logs"),
-                                    html.Pre("Krass hier steht text",
-                                             id="runlog")
-                                ]
-                            ),
 
-                        ], style={'display': 'flex', 'flex-direction': 'row'})
+                        html.Div([
+                            html.Label("cv type:"),
+                            dcc.Dropdown(id="cv_selector_dropdown",
+                                         options=[
+                                             {'label': 'Non Weighted', 'value': 'non_weighted'},
+                                             {'label': 'Degree Weighted', 'value': 'degree_weighted'}
+                                         ],
+                                         value="non_weighted",
+                                         style={"width": "10vw"}
+                                         )
+                        ]
+                        )
+
+
+                        ], style={'display': 'flex', 'flex-direction': 'row'}),
+
+                    html.Div(
+                        children=[
+                            html.H4("Logs"),
+                            html.Pre("Krass hier steht text",
+                                     id="runlog")
+                        ]
+                    ),
                 ]),
+
+
 
     ])
     return tabs
@@ -520,15 +537,22 @@ def update_network_plot(selected_run, click_data):
 
 @callback(
     Output("cv_weight_plot","figure"),
-    Input("coordinates_plot_dropdown_runs", "value")
+    Input("coordinates_plot_dropdown_runs", "value"),
+    Input("cv_selector_dropdown", "value")
 )
-def update_cv_weight_plot(selected_run: str):
-    if selected_run is None:
+def update_cv_weight_plot(selected_run: str, cv_type: str):
+    if selected_run is None or cv_type is None:
         return {}
 
     file_path = f"{results_path}{selected_run}/"
-    cv_optim = np.load(file_path + "cv_optim.npz")
-    xi_fit = cv_optim["xi_fit"]
+    if cv_type == "non_weighted":
+        dat = np.load(file_path + "cv_optim.npz")
+    elif cv_type == "degree_weighted":
+        dat = np.load(file_path + "cv_optim_degree_weighted.npz")
+    else:
+        return {}
+
+    xi_fit = dat["xi_fit"]
     fig = px.violin(xi_fit[:, :], points="all")
 
     return fig
@@ -563,4 +587,3 @@ def main() -> None:
 if __name__ == '__main__':
 
     main()
-    #get_reruns(df, "CNVM2_ab2_n500_r225-100_rt004-004_l300_a1000_s150_r02")
