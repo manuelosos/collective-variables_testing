@@ -2,6 +2,7 @@ from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Pa
 from dash.dash_table.Format import Format, Scheme
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.subplots as ps
 import colorlover
 import pandas as pd
 import sponet_cv_testing.datamanagement as dm
@@ -10,6 +11,7 @@ import sponet.collective_variables as cv
 import networkx as nx
 import re
 import json
+import math
 
 app = Dash(__name__)
 
@@ -22,7 +24,7 @@ df = dm.read_data_csv(f"{results_path}results_table.csv")
 #df = df[df["dim_estimate"] >= 1]
 
 
-def create_figure_from_network(network: nx.Graph, x: np.ndarray):
+def create_figure_from_network(network: nx.Graph, x: np.ndarray, return_fig_params: bool = False):
     seed = 100
     pos = nx.spring_layout(network, seed=seed)
     # pos = nx.planar_layout(network)
@@ -62,8 +64,13 @@ def create_figure_from_network(network: nx.Graph, x: np.ndarray):
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
 
+    if return_fig_params:
+        return edge_trace, node_trace, layout
+
     fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
     return fig
+
+
 
 
 def discrete_background_color_bins(df: pd.DataFrame, n_bins: int = 5, columns: str | list[str]='all'):
@@ -156,6 +163,11 @@ def get_reruns(data, run_id: str) -> list[str]:
 
 
     return reruns
+
+
+
+
+
 
 
 def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
@@ -361,24 +373,41 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             mathjax=True,
                             style={'width': '60vw', 'height': '70vh'}
                         ),
-                        dcc.Graph(
-                            id="network_plot",
-                            mathjax=True,
-                            style={'width': '40vw', 'height': '70vh'}
+                        dcc.Tabs(
+                            id="plot_tab",
+                            value="network_plot",
+                            children=[
+                                dcc.Tab(
+                                    label="Network",
+                                    value="network_plot",
+                                    children=[
+                                        dcc.Graph(
+                                            id="network_plot",
+                                            mathjax=True,
+                                            style={'width': '40vw', 'height': '70vh'}
+                                        )
+                                    ]
+                                ),
+                                dcc.Tab(
+                                    label="CV Plot",
+                                    value="cv_plot",
+                                    children=[
+
+                                    ]
+                                )
+                            ]
                         )
+
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
                     #################Plots and Logs
-                    html.Div(
-                        children=[
-                            html.Div(
-                                children=[
-                                    dcc.Graph(
-                                        id="cv_weight_plot",
-                                        mathjax=True,
-                                        style={'width': '60vw', 'height': '40vh'}
-                                    ),
-                                ]
-                            ),
+                    html.Div([
+                            html.Div([
+                                dcc.Graph(
+                                    id="cv_plot",
+                                    mathjax=True,
+                                    style={'width': '40vw', 'height': '70vh'}
+                                )
+                                ]),
 
                         html.Div([
                             html.Label("cv type:"),
@@ -390,8 +419,8 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          value="non_weighted",
                                          style={"width": "10vw"}
                                          )
-                        ]
-                        )
+                        ]),
+                        html.Div([])
 
 
                         ], style={'display': 'flex', 'flex-direction': 'row'}),
@@ -509,10 +538,12 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     Output("network_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input('3d_coordinates_plot', 'clickData'),
+    Input("plot_tab", "value")
 )
-def update_network_plot(selected_run, click_data):
-    if selected_run is None:
+def update_network_plot(selected_run, click_data, tab):
+    if selected_run is None or tab != "network_plot":
         return {}
+
 
     file_path = f"{results_path}{selected_run}/"
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
@@ -536,24 +567,97 @@ def update_network_plot(selected_run, click_data):
 
 
 @callback(
-    Output("cv_weight_plot","figure"),
-    Input("coordinates_plot_dropdown_runs", "value"),
-    Input("cv_selector_dropdown", "value")
+    Output("cv_plot","figure"),
+    Input("coordinates_plot_dropdown_runs", "value")
 )
-def update_cv_weight_plot(selected_run: str, cv_type: str):
-    if selected_run is None or cv_type is None:
+def update_cv_network_plot(selected_run: str):
+    if selected_run is None:
         return {}
+
+    cv_dim=4
 
     file_path = f"{results_path}{selected_run}/"
-    if cv_type == "non_weighted":
-        dat = np.load(file_path + "cv_optim.npz")
-    elif cv_type == "degree_weighted":
-        dat = np.load(file_path + "cv_optim_degree_weighted.npz")
-    else:
-        return {}
+    network = dm.open_network(file_path, "network")
+    alphas = np.load(file_path+"cv_optim.npz")["alphas"]
+    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
 
-    xi_fit = dat["xi_fit"]
-    fig = px.violin(xi_fit[:, :], points="all")
+    seed = 100
+    pos = nx.spring_layout(network, seed=seed)
+    pos = np.array(list(pos.values()))
+
+    degrees = np.array(network.degree)[:, 1:]
+
+    y_index = ["", "", "3", "4"]
+    x_index = ["","2","","4"]
+    data = []
+    for i in range(cv_dim):
+
+
+        this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
+        node_trace = go.Scatter(
+            x=pos[:, 0], y=pos[:, 1],
+            mode="markers",
+            marker=dict(showscale=True),
+            customdata=degrees,
+            hovertemplate="Degree: %{customdata}",
+            xaxis=f"x{x_index[i]}",
+            yaxis=f"y{y_index[i]}"
+        )
+        node_trace.marker.color = this_alpha
+
+
+
+        edge_x = []
+        edge_y = []
+        for edge in network.edges():
+            x0, y0 = pos[int(edge[0])]
+            x1, y1 = pos[int(edge[1])]
+
+            edge_x.append(x0)
+            edge_x.append(x1)
+            edge_x.append(None)
+            edge_y.append(y0)
+            edge_y.append(y1)
+            edge_y.append(None)
+
+        edge_trace = go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            mode='lines',
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            xaxis=f"x{x_index[i]}",
+            yaxis=f"y{y_index[i]}"
+        )
+        data.append(edge_trace)
+        data.append(node_trace)
+
+
+    layout = go.Layout(
+        xaxis=dict(
+            domain=[0, 0.45]
+        ),
+        yaxis=dict(
+            domain=[0, 0.45]
+        ),
+        xaxis2=dict(
+            domain=[0.55, 1]
+        ),
+        xaxis4=dict(
+            domain=[0.55, 1],
+            anchor="y4"
+        ),
+        yaxis3=dict(
+            domain=[0.55, 1]
+        ),
+        yaxis4=dict(
+            domain=[0.55, 1],
+            anchor="x4"
+        )
+    )
+    fig = go.Figure(data=data, layout=layout)
+    fig.update_layout(coloraxis=dict(colorscale='Bluered_r'), showlegend=False)
+
 
     return fig
 

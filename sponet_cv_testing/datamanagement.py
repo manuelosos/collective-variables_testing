@@ -328,8 +328,8 @@ class RunResult:
 
 
 if __name__ == "__main__":
-    #archive_run_result("/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/sponet_cv_testing/tmp_results/24-02-14_ab_500_1_0/")
-    #archive_dir("../tests/tmp_results/")
+
+    archive_dir("../tests/tmp_results/")
 
     #df = read_data_csv()
     #df = df.replace("[]", "")
@@ -338,10 +338,10 @@ if __name__ == "__main__":
 
     #df.to_csv("test")
 
-    df = read_data_csv()
+    #df = read_data_csv()
 
-    print(df.columns)
-    df[df["num_anchor_points"] == 2000].to_csv("new_data.csv")
+    #print(df.columns)
+    #df[df["num_anchor_points"] == 2000].to_csv("new_data.csv")
 
 
 
