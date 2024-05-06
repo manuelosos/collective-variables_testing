@@ -19,7 +19,7 @@ app = Dash(__name__)
 results_path: str = "../data/results/"
 
 
-df = dm.read_data_csv(f"{results_path}results_table.csv")
+df = dm.read_data_csv(f"{results_path}test_table.csv")
 # Pre-filtering of the data can be done here
 #df = df[df["dim_estimate"] >= 1]
 
@@ -382,7 +382,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             dcc.Graph(
                                 id="cv_plot",
                                 mathjax=True,
-                                style={'width': '40vw', 'height': '70vh'}
+                                style={'width': '90vw', 'height': '90vh'}
                             )
                         ]),
 
@@ -397,14 +397,12 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          style={"width": "10vw"}
                                          )
                         ], style={'display': 'flex', 'flex-direction': 'row'}),
-
-                    html.Div(
-                        children=[
+                        html.Div([
                             html.H4("Logs"),
                             html.Pre("Krass hier steht text",
                                      id="runlog")
                         ]),
-                ]),
+                    ]),
                 ])
     ])
     return tabs
@@ -549,28 +547,32 @@ def update_cv_network_plot(selected_run: str):
     file_path = f"{results_path}{selected_run}/"
     network = dm.open_network(file_path, "network")
     alphas = np.load(file_path+"cv_optim.npz")["alphas"]
-    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
 
     seed = 100
     pos = nx.spring_layout(network, seed=seed)
     pos = np.array(list(pos.values()))
 
-    degrees = np.array(network.degree)[:, 1:]
+    degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
+    lower_scaling = 3
+    upper_scaling = 0.25
+    size_adjustement = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
+                max(degrees) - min(degrees)) + lower_scaling) * x)
+    #size_adjustement = np.vectorize()
 
     y_index = [1, 1, 2, 2]
     x_index = [1, 2, 1, 2]
 
     fig = ps.make_subplots(rows=2,
                            cols=2,
-                           shared_xaxes=True,
-                           shared_yaxes=True,
                            vertical_spacing=0.02,
                            horizontal_spacing=0.02)
+
+
 
     node_trace = go.Scatter(
         x=pos[:, 0], y=pos[:, 1],
         mode="markers",
-        marker=dict(showscale=True),
+        marker=dict(showscale=True, size=size_adjustement(degrees)),
         customdata=degrees,
         hovertemplate="Degree: %{customdata}",
     )
@@ -606,36 +608,12 @@ def update_cv_network_plot(selected_run: str):
         fig.add_trace(edge_trace, row=y_index[i], col=x_index[i])
         fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
 
-
     fig.update_layout(showlegend=False,
-                  hovermode='closest',
-                  margin=dict(b=20, l=5, r=5, t=40))
+                      hovermode='closest',
+                      coloraxis=dict(colorscale="portland"))
 
     fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
     fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
-    layout = go.Layout(
-        xaxis=dict(
-            domain=[0, 0.45]
-        ),
-        yaxis=dict(
-            domain=[0, 0.45]
-        ),
-        xaxis2=dict(
-            domain=[0.55, 1]
-        ),
-        xaxis4=dict(
-            domain=[0.55, 1],
-            anchor="y4"
-        ),
-        yaxis3=dict(
-            domain=[0.55, 1]
-        ),
-        yaxis4=dict(
-            domain=[0.55, 1],
-            anchor="x4"
-        )
-    )
-
 
     return fig
 
