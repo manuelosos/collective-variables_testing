@@ -591,8 +591,6 @@ def update_cv_network_plot(selected_run: str):
     y_index = [1, 1, 2, 2]
     x_index = [1, 2, 1, 2]
 
-    data = []
-
     fig = ps.make_subplots(rows=2, cols=2)
 
     node_trace = go.Scatter(
@@ -601,8 +599,6 @@ def update_cv_network_plot(selected_run: str):
         marker=dict(showscale=True),
         customdata=degrees,
         hovertemplate="Degree: %{customdata}",
-        # xaxis=f"x{x_index[i]}",
-        # yaxis=f"y{y_index[i]}"
     )
 
     edge_x = []
@@ -624,8 +620,6 @@ def update_cv_network_plot(selected_run: str):
         mode='lines',
         line=dict(width=0.5, color='#888'),
         hoverinfo='none',
-        #xaxis=f"x{x_index[i]}",
-        #yaxis=f"y{y_index[i]}"
     )
 
     for i in range(cv_dim):
@@ -633,14 +627,13 @@ def update_cv_network_plot(selected_run: str):
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
         node_trace.marker.color = this_alpha
-
-        fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
+        node_trace.marker.coloraxis = "coloraxis"
 
         fig.add_trace(edge_trace, row=y_index[i], col=x_index[i])
+        fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
 
-        #data.append(edge_trace)
-        #data.append(node_trace)
 
+    fig.update_layout(showlegend=False)
 
     layout = go.Layout(
         xaxis=dict(
@@ -664,8 +657,6 @@ def update_cv_network_plot(selected_run: str):
             anchor="x4"
         )
     )
-    #fig = go.Figure(data=data, layout=layout)
-    #fig.update_layout(coloraxis=dict(colorscale='Bluered_r'), showlegend=False)
 
 
     return fig
