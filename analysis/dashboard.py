@@ -587,50 +587,59 @@ def update_cv_network_plot(selected_run: str):
 
     degrees = np.array(network.degree)[:, 1:]
 
-    y_index = ["", "", "3", "4"]
-    x_index = ["","2","","4"]
+
+    y_index = [1, 1, 2, 2]
+    x_index = [1, 2, 1, 2]
+
     data = []
+
+    fig = ps.make_subplots(rows=2, cols=2)
+
+    node_trace = go.Scatter(
+        x=pos[:, 0], y=pos[:, 1],
+        mode="markers",
+        marker=dict(showscale=True),
+        customdata=degrees,
+        hovertemplate="Degree: %{customdata}",
+        # xaxis=f"x{x_index[i]}",
+        # yaxis=f"y{y_index[i]}"
+    )
+
+    edge_x = []
+    edge_y = []
+    for edge in network.edges():
+        x0, y0 = pos[int(edge[0])]
+        x1, y1 = pos[int(edge[1])]
+
+        edge_x.append(x0)
+        edge_x.append(x1)
+        edge_x.append(None)
+        edge_y.append(y0)
+        edge_y.append(y1)
+        edge_y.append(None)
+
+    edge_trace = go.Scatter(
+        x=edge_x,
+        y=edge_y,
+        mode='lines',
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+        #xaxis=f"x{x_index[i]}",
+        #yaxis=f"y{y_index[i]}"
+    )
+
     for i in range(cv_dim):
 
-
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
-        node_trace = go.Scatter(
-            x=pos[:, 0], y=pos[:, 1],
-            mode="markers",
-            marker=dict(showscale=True),
-            customdata=degrees,
-            hovertemplate="Degree: %{customdata}",
-            xaxis=f"x{x_index[i]}",
-            yaxis=f"y{y_index[i]}"
-        )
+
         node_trace.marker.color = this_alpha
 
+        fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
 
+        fig.add_trace(edge_trace, row=y_index[i], col=x_index[i])
 
-        edge_x = []
-        edge_y = []
-        for edge in network.edges():
-            x0, y0 = pos[int(edge[0])]
-            x1, y1 = pos[int(edge[1])]
-
-            edge_x.append(x0)
-            edge_x.append(x1)
-            edge_x.append(None)
-            edge_y.append(y0)
-            edge_y.append(y1)
-            edge_y.append(None)
-
-        edge_trace = go.Scatter(
-            x=edge_x,
-            y=edge_y,
-            mode='lines',
-            line=dict(width=0.5, color='#888'),
-            hoverinfo='none',
-            xaxis=f"x{x_index[i]}",
-            yaxis=f"y{y_index[i]}"
-        )
-        data.append(edge_trace)
-        data.append(node_trace)
+        #data.append(edge_trace)
+        #data.append(node_trace)
 
 
     layout = go.Layout(
@@ -655,8 +664,8 @@ def update_cv_network_plot(selected_run: str):
             anchor="x4"
         )
     )
-    fig = go.Figure(data=data, layout=layout)
-    fig.update_layout(coloraxis=dict(colorscale='Bluered_r'), showlegend=False)
+    #fig = go.Figure(data=data, layout=layout)
+    #fig.update_layout(coloraxis=dict(colorscale='Bluered_r'), showlegend=False)
 
 
     return fig
