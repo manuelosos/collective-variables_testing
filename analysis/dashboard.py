@@ -336,11 +336,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          value="weighted_shares",
                                          style={'width': '10vw'})
                         ])
-                    ],
-                        style={'display': 'flex', 'flex-direction': 'row'}
-                    ),
-
-
+                    ], style={'display': 'flex', 'flex-direction': 'row'}),
 
 
                     html.Div([
@@ -373,41 +369,22 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             mathjax=True,
                             style={'width': '60vw', 'height': '70vh'}
                         ),
-                        dcc.Tabs(
-                            id="plot_tab",
-                            value="network_plot",
-                            children=[
-                                dcc.Tab(
-                                    label="Network",
-                                    value="network_plot",
-                                    children=[
-                                        dcc.Graph(
-                                            id="network_plot",
-                                            mathjax=True,
-                                            style={'width': '40vw', 'height': '70vh'}
-                                        )
-                                    ]
-                                ),
-                                dcc.Tab(
-                                    label="CV Plot",
-                                    value="cv_plot",
-                                    children=[
-
-                                    ]
-                                )
-                            ]
+                        dcc.Graph(
+                            id="network_plot",
+                            mathjax=True,
+                            style={'width': '40vw', 'height': '70vh'}
                         )
-
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
+
                     #################Plots and Logs
                     html.Div([
-                            html.Div([
-                                dcc.Graph(
-                                    id="cv_plot",
-                                    mathjax=True,
-                                    style={'width': '40vw', 'height': '70vh'}
-                                )
-                                ]),
+                        html.Div([
+                            dcc.Graph(
+                                id="cv_plot",
+                                mathjax=True,
+                                style={'width': '40vw', 'height': '70vh'}
+                            )
+                        ]),
 
                         html.Div([
                             html.Label("cv type:"),
@@ -419,10 +396,6 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          value="non_weighted",
                                          style={"width": "10vw"}
                                          )
-                        ]),
-                        html.Div([])
-
-
                         ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     html.Div(
@@ -430,12 +403,9 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             html.H4("Logs"),
                             html.Pre("Krass hier steht text",
                                      id="runlog")
-                        ]
-                    ),
+                        ]),
                 ]),
-
-
-
+                ])
     ])
     return tabs
 
@@ -538,10 +508,10 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     Output("network_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input('3d_coordinates_plot', 'clickData'),
-    Input("plot_tab", "value")
+
 )
-def update_network_plot(selected_run, click_data, tab):
-    if selected_run is None or tab != "network_plot":
+def update_network_plot(selected_run, click_data):
+    if selected_run is None:
         return {}
 
 
@@ -587,11 +557,15 @@ def update_cv_network_plot(selected_run: str):
 
     degrees = np.array(network.degree)[:, 1:]
 
-
     y_index = [1, 1, 2, 2]
     x_index = [1, 2, 1, 2]
 
-    fig = ps.make_subplots(rows=2, cols=2)
+    fig = ps.make_subplots(rows=2,
+                           cols=2,
+                           shared_xaxes=True,
+                           shared_yaxes=True,
+                           vertical_spacing=0.02,
+                           horizontal_spacing=0.02)
 
     node_trace = go.Scatter(
         x=pos[:, 0], y=pos[:, 1],
@@ -633,8 +607,12 @@ def update_cv_network_plot(selected_run: str):
         fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
 
 
-    fig.update_layout(showlegend=False)
+    fig.update_layout(showlegend=False,
+                  hovermode='closest',
+                  margin=dict(b=20, l=5, r=5, t=40))
 
+    fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
+    fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
     layout = go.Layout(
         xaxis=dict(
             domain=[0, 0.45]
