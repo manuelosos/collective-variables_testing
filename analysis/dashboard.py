@@ -19,7 +19,7 @@ app = Dash(__name__)
 results_path: str = "../data/results/"
 
 
-df = dm.read_data_csv(f"{results_path}test_table.csv")
+df = dm.read_data_csv(f"{results_path}result_table.csv")
 # Pre-filtering of the data can be done here
 #df = df[df["dim_estimate"] >= 1]
 
@@ -549,12 +549,12 @@ def update_cv_network_plot(selected_run: str):
     alphas = np.load(file_path+"cv_optim.npz")["alphas"]
 
     seed = 100
-    pos = nx.spring_layout(network, seed=seed)
+    pos = nx.spring_layout(network, seed=seed, k=2/np.sqrt(len(network)))
     pos = np.array(list(pos.values()))
 
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
-    lower_scaling = 3
-    upper_scaling = 0.25
+    lower_scaling = 4
+    upper_scaling = 0.15
     size_adjustement = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
                 max(degrees) - min(degrees)) + lower_scaling) * x)
     #size_adjustement = np.vectorize()
