@@ -587,12 +587,12 @@ def update_cv_network_plot(selected_run: str, cv_type, scaling):
     if scaling == "linear":
         lower_scaling = 4
         upper_scaling = 0.15
-        size_adjustement = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
+        size_adjustment = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
                     max(degrees) - min(degrees)) + lower_scaling) * x)
     else:
-        size_adjustement = np.vectorize(lambda x: np.log(300*x))
+        size_adjustment = np.vectorize(lambda x: np.log(300*x))
 
-    degrees_adjusted = size_adjustement(degrees)
+    degrees_adjusted = size_adjustment(degrees)
 
 
 
@@ -653,7 +653,11 @@ def update_cv_network_plot(selected_run: str, cv_type, scaling):
         xi_xifit = go.Scatter(
             x=xi[:, i],
             y=xi_fit[:, i],
-            mode="markers"
+            mode="markers",
+            customdata=degrees,
+            hovertemplate="Degree: %{customdata}",
+
+
         )
         fig.add_trace(xi_xifit, row=i+1, col=2)
 
