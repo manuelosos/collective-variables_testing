@@ -402,14 +402,28 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          value="non_weighted",
                                          style={"width": "10vw"}
                                          )
-                        ], style={'display': 'flex', 'flex-direction': 'row'}),
+                        ],),
                         html.Div([
-                            dcc.Graph(
-                                id="cv_plot",
-                                mathjax=True,
-                                style={'width': '90vw', 'height': '90vh'}
-                            )
-                        ]),
+                            html.Label("node scaling"),
+                            dcc.Dropdown(id="node_scaling_dropdown",
+                                         options=[
+                                             {'label': 'Linear', 'value': 'linear'},
+                                             {'label': 'Logarithmic', 'value': 'logarithmic'}
+                                         ],
+                                         value="linear",
+                                         style={"width": "10vw"}
+                                         )
+                        ], ),
+                    ], style={'display': 'flex', 'flex-direction': 'row'}),
+                    html.Div([
+                        dcc.Graph(
+                            id="cv_plot",
+                            mathjax=True,
+                            style={'width': '90vw', 'height': '125vh'}
+                        )
+                    ]),
+
+
 
 
                         html.Div([
@@ -417,7 +431,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                             html.Pre("Krass hier steht text",
                                      id="runlog")
                         ]),
-                    ]),
+
                 ])
     ])
     return tabs
@@ -551,9 +565,11 @@ def update_network_plot(selected_run, click_data):
 
 @callback(
     Output("cv_plot","figure"),
-    Input("coordinates_plot_dropdown_runs", "value")
+    Input("coordinates_plot_dropdown_runs", "value"),
+    Input("cv_selector_dropdown", "value"),
+    Input("node_scaling_dropdown", "value")
 )
-def update_cv_network_plot(selected_run: str):
+def update_cv_network_plot(selected_run: str, cv_type, scaling):
     if selected_run is None:
         return {}
 
@@ -561,34 +577,34 @@ def update_cv_network_plot(selected_run: str):
 
     file_path = f"{results_path}{selected_run}/"
     network = dm.open_network(file_path, "network")
-    cv_optim = np.load(file_path+"cv_optim.npz")
-    alphas = cv_optim["alphas"]
-    xi = np.load(file_path + "transition_manifold.npy")
-    xi_fit = cv_optim["xi_fit"]
 
     seed = 100
     pos = nx.spring_layout(network, seed=seed, k=2/np.sqrt(len(network)))
     pos = np.array(list(pos.values()))
 
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
-    lower_scaling = 4
-    upper_scaling = 0.15
-    size_adjustement_linear = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
-                max(degrees) - min(degrees)) + lower_scaling) * x)
-    size_adjustement_log = np.vectorize(lambda x: np.log(300*x))
 
-    degrees_adjusted = size_adjustement_log(degrees)
+    if scaling == "linear":
+        lower_scaling = 4
+        upper_scaling = 0.15
+        size_adjustement = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
+                    max(degrees) - min(degrees)) + lower_scaling) * x)
+    else:
+        size_adjustement = np.vectorize(lambda x: np.log(300*x))
 
-    print(f"min: {min(degrees_adjusted)}")
-    print(f"max: {max(degrees_adjusted)}")
+    degrees_adjusted = size_adjustement(degrees)
 
 
-    #size_adjustement = np.vectorize()
 
-    y_index = [1, 1, 2, 2]
-    x_index = [1, 2, 1, 2]
+    cv_path = "cv_optim.npz"
+    if cv_type == "degree_weighted":
+        cv_path = "cv_optim_degree_weighted.npz"
+    cv_optim = np.load(file_path + cv_path)
+    alphas = cv_optim["alphas"]
+    xi = np.load(file_path + "transition_manifold.npy")
+    xi_fit = cv_optim["xi_fit"]
 
-    fig = ps.make_subplots(rows=2,
+    fig = ps.make_subplots(rows=4,
                            cols=2,
                            vertical_spacing=0.02,
                            horizontal_spacing=0.02)
@@ -624,28 +640,22 @@ def update_cv_network_plot(selected_run: str):
         hoverinfo='none',
     )
 
-
-    xi_xifit = go.Scatter(
-        x = xi[:,0],
-        y=xi_fit[:,0],
-        mode="markers"
-    )
-    fig.add_trace(xi_xifit, row=1, col=1)
-    fig.update_layout(
-        xaxis_title="$\\varphi_1$",
-        yaxis_title="$\\bar\phi_1$",
-        font=dict(size=17)
-    )
-
-    for i in range(0, cv_dim-1):
+    for i in range(0, cv_dim):
 
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
         node_trace.marker.color = this_alpha
         node_trace.marker.coloraxis = "coloraxis"
 
-        fig.add_trace(edge_trace, row=y_index[i+1], col=x_index[i+1])
-        fig.add_trace(node_trace, row=y_index[i+1], col=x_index[i+1])
+        fig.add_trace(edge_trace, row=i+1, col=1)
+        fig.add_trace(node_trace, row=i+1, col=1)
+
+        xi_xifit = go.Scatter(
+            x=xi[:, i],
+            y=xi_fit[:, i],
+            mode="markers"
+        )
+        fig.add_trace(xi_xifit, row=i+1, col=2)
 
     fig.update_layout(showlegend=False,
                       hovermode='closest',
@@ -653,6 +663,8 @@ def update_cv_network_plot(selected_run: str):
 
     fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
     fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
+
+
 
     return fig
 
