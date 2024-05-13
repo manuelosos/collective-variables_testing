@@ -11,15 +11,29 @@ import sponet.collective_variables as cv
 import networkx as nx
 import re
 import json
+import sys
 import math
 
 app = Dash(__name__)
 
+args = sys.argv[1:]
+
+
 # Adjust path in following function call if necessary
 results_path: str = "../data/results/"
 
+results_table_path = "results_table.csv"
 
-df = dm.read_data_csv(f"{results_path}result_table.csv")
+if len(args) > 0:
+    test = args[0]
+    if test == "1":
+        results_table_path = "test_table.csv"
+
+
+
+
+
+df = dm.read_data_csv(f"{results_path}{results_table_path}")
 # Pre-filtering of the data can be done here
 #df = df[df["dim_estimate"] >= 1]
 
@@ -379,14 +393,6 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     #################Plots and Logs
                     html.Div([
                         html.Div([
-                            dcc.Graph(
-                                id="cv_plot",
-                                mathjax=True,
-                                style={'width': '90vw', 'height': '90vh'}
-                            )
-                        ]),
-
-                        html.Div([
                             html.Label("cv type:"),
                             dcc.Dropdown(id="cv_selector_dropdown",
                                          options=[
@@ -397,6 +403,15 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                                          style={"width": "10vw"}
                                          )
                         ], style={'display': 'flex', 'flex-direction': 'row'}),
+                        html.Div([
+                            dcc.Graph(
+                                id="cv_plot",
+                                mathjax=True,
+                                style={'width': '90vw', 'height': '90vh'}
+                            )
+                        ]),
+
+
                         html.Div([
                             html.H4("Logs"),
                             html.Pre("Krass hier steht text",
@@ -546,7 +561,10 @@ def update_cv_network_plot(selected_run: str):
 
     file_path = f"{results_path}{selected_run}/"
     network = dm.open_network(file_path, "network")
-    alphas = np.load(file_path+"cv_optim.npz")["alphas"]
+    cv_optim = np.load(file_path+"cv_optim.npz")
+    alphas = cv_optim["alphas"]
+    xi = np.load(file_path + "transition_manifold.npy")
+    xi_fit = cv_optim["xi_fit"]
 
     seed = 100
     pos = nx.spring_layout(network, seed=seed, k=2/np.sqrt(len(network)))
@@ -555,8 +573,16 @@ def update_cv_network_plot(selected_run: str):
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
     lower_scaling = 4
     upper_scaling = 0.15
-    size_adjustement = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
+    size_adjustement_linear = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
                 max(degrees) - min(degrees)) + lower_scaling) * x)
+    size_adjustement_log = np.vectorize(lambda x: np.log(300*x))
+
+    degrees_adjusted = size_adjustement_log(degrees)
+
+    print(f"min: {min(degrees_adjusted)}")
+    print(f"max: {max(degrees_adjusted)}")
+
+
     #size_adjustement = np.vectorize()
 
     y_index = [1, 1, 2, 2]
@@ -572,7 +598,7 @@ def update_cv_network_plot(selected_run: str):
     node_trace = go.Scatter(
         x=pos[:, 0], y=pos[:, 1],
         mode="markers",
-        marker=dict(showscale=True, size=size_adjustement(degrees)),
+        marker=dict(showscale=True, size=degrees_adjusted),
         customdata=degrees,
         hovertemplate="Degree: %{customdata}",
     )
@@ -598,15 +624,28 @@ def update_cv_network_plot(selected_run: str):
         hoverinfo='none',
     )
 
-    for i in range(cv_dim):
+
+    xi_xifit = go.Scatter(
+        x = xi[:,0],
+        y=xi_fit[:,0],
+        mode="markers"
+    )
+    fig.add_trace(xi_xifit, row=1, col=1)
+    fig.update_layout(
+        xaxis_title="$\\varphi_1$",
+        yaxis_title="$\\bar\phi_1$",
+        font=dict(size=17)
+    )
+
+    for i in range(0, cv_dim-1):
 
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
         node_trace.marker.color = this_alpha
         node_trace.marker.coloraxis = "coloraxis"
 
-        fig.add_trace(edge_trace, row=y_index[i], col=x_index[i])
-        fig.add_trace(node_trace, row=y_index[i], col=x_index[i])
+        fig.add_trace(edge_trace, row=y_index[i+1], col=x_index[i+1])
+        fig.add_trace(node_trace, row=y_index[i+1], col=x_index[i+1])
 
     fig.update_layout(showlegend=False,
                       hovermode='closest',
