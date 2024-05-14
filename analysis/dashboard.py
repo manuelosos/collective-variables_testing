@@ -391,37 +391,8 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     #################Plots and Logs
-                    html.Div([
-                        html.Div([
-                            html.Label("cv type:"),
-                            dcc.Dropdown(id="cv_selector_dropdown",
-                                         options=[
-                                             {'label': 'Non Weighted', 'value': 'non_weighted'},
-                                             {'label': 'Degree Weighted', 'value': 'degree_weighted'}
-                                         ],
-                                         value="non_weighted",
-                                         style={"width": "10vw"}
-                                         )
-                        ],),
-                        html.Div([
-                            html.Label("node scaling"),
-                            dcc.Dropdown(id="node_scaling_dropdown",
-                                         options=[
-                                             {'label': 'Linear', 'value': 'linear'},
-                                             {'label': 'Logarithmic', 'value': 'logarithmic'}
-                                         ],
-                                         value="linear",
-                                         style={"width": "10vw"}
-                                         )
-                        ], ),
-                    ], style={'display': 'flex', 'flex-direction': 'row'}),
-                    html.Div([
-                        dcc.Graph(
-                            id="cv_plot",
-                            mathjax=True,
-                            style={'width': '90vw', 'height': '125vh'}
-                        )
-                    ]),
+                    create_cv_plots(),
+
 
 
 
@@ -435,6 +406,46 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                 ])
     ])
     return tabs
+
+
+def create_cv_plots():
+
+    cv_plots = html.Div([
+        html.Div([
+            html.Div([
+                html.Label("cv type:"),
+                dcc.Dropdown(id="cv_selector_dropdown",
+                             options=[
+                                 {'label': 'Non Weighted', 'value': 'non_weighted'},
+                                 {'label': 'Degree Weighted', 'value': 'degree_weighted'}
+                             ],
+                             value="non_weighted",
+                             style={"width": "10vw"}
+                             )
+            ],),
+            html.Div([
+                html.Label("node scaling"),
+                dcc.Dropdown(id="node_scaling_dropdown",
+                             options=[
+                                 {'label': 'Linear', 'value': 'linear'},
+                                 {'label': 'Logarithmic', 'value': 'logarithmic'}
+                             ],
+                             value="linear",
+                             style={"width": "10vw"}
+                             )
+            ], ),
+        ], style={'display': 'flex', 'flex-direction': 'row'}),
+
+        html.Div([
+            dcc.Graph(
+                id="cv_plot",
+                mathjax=True,
+                style={'width': '100vw', 'height': '125vh'}
+            )
+        ]),
+    ])
+
+    return cv_plots
 
 
 @callback(Output("coordinates_plot_dropdown_runs", "options"),
