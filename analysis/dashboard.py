@@ -29,35 +29,24 @@ if len(args) > 0:
     if test == "1":
         results_table_path = "test_table.csv"
 
-
-
-
-
 df = dm.read_data_csv(f"{results_path}{results_table_path}")
 # Pre-filtering of the data can be done here
 #df = df[df["dim_estimate"] >= 1]
 
 
-def create_figure_from_network(network: nx.Graph, x: np.ndarray, return_fig_params: bool = False):
-    seed = 100
-    pos = nx.spring_layout(network, seed=seed)
-    # pos = nx.planar_layout(network)
-    # pos = nx.kamada_kawai_layout(network)
+def compute_network_plot_trace(network: nx.Graph, seed: int=100):
+    pos = nx.spring_layout(network, seed=seed, k=2 / np.sqrt(len(network)))
     pos = np.array(list(pos.values()))
-
-    degrees = np.array(network.degree)[:, 1:]
 
     node_trace = go.Scatter(
         x=pos[:, 0], y=pos[:, 1],
         mode="markers",
         marker=dict(showscale=True),
-        customdata=degrees,
-        hovertemplate="Degree: %{customdata}"
-        )
-    node_trace.marker.color = np.logical_not(x.astype(bool)).astype(int)
+    )
 
     edge_x = []
     edge_y = []
+
     for edge in network.edges():
         x0, y0 = pos[int(edge[0])]
         x1, y1 = pos[int(edge[1])]
@@ -69,22 +58,14 @@ def create_figure_from_network(network: nx.Graph, x: np.ndarray, return_fig_para
         edge_y.append(y1)
         edge_y.append(None)
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, mode='lines', line=dict(width=0.5, color='#888'), hoverinfo='none')
-
-    layout = go.Layout(
-        showlegend=False,
-        hovermode='closest',
-        margin=dict(b=20, l=5, r=5, t=40),
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
-
-    if return_fig_params:
-        return edge_trace, node_trace, layout
-
-    fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
-    return fig
-
-
+    edge_trace = go.Scatter(
+        x=edge_x,
+        y=edge_y,
+        mode='lines',
+        line=dict(width=0.5, color='#888'),
+        hoverinfo='none',
+    )
+    return node_trace, edge_trace
 
 
 def discrete_background_color_bins(df: pd.DataFrame, n_bins: int = 5, columns: str | list[str]='all'):
@@ -179,12 +160,7 @@ def get_reruns(data, run_id: str) -> list[str]:
     return reruns
 
 
-
-
-
-
-
-def create_table(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
+def get_table_html(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
 
     style_data_conditional = [
         {
@@ -298,7 +274,7 @@ def unselect_table_entries(clicks) -> list[int]:
     return []
 
 
-def create_tabs(tabs_id: str) -> dcc.Tabs:
+def get_tabs_html(tabs_id: str) -> dcc.Tabs:
     tabs = dcc.Tabs(id=tabs_id, value="tab_2", children=[
         #dcc.Tab(label="Overview Plots",
          #       value="tab_1",
@@ -391,7 +367,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     #################Plots and Logs
-                    create_cv_plots(),
+                    get_cv_plots_html(),
 
 
 
@@ -408,7 +384,7 @@ def create_tabs(tabs_id: str) -> dcc.Tabs:
     return tabs
 
 
-def create_cv_plots():
+def get_cv_plots_html():
 
     cv_plots = html.Div([
         html.Div([
@@ -419,7 +395,7 @@ def create_cv_plots():
                                  {'label': 'Non Weighted', 'value': 'non_weighted'},
                                  {'label': 'Degree Weighted', 'value': 'degree_weighted'}
                              ],
-                             value="non_weighted",
+                             value="degree_weighted",
                              style={"width": "10vw"}
                              )
             ],),
@@ -438,11 +414,16 @@ def create_cv_plots():
 
         html.Div([
             dcc.Graph(
-                id="cv_plot",
+                id="cv_network_plots",
                 mathjax=True,
-                style={'width': '100vw', 'height': '125vh'}
-            )
-        ]),
+                style={'width': '50vw', 'height': '125vh'}
+            ),
+            dcc.Graph(
+                id="cv_xixifit_plots",
+                mathjax=True,
+                style={'width': '50vw', 'height': '125vh'}
+            ),
+        ], style={'display': 'flex', 'flex-direction': 'row'}),
     ])
 
     return cv_plots
@@ -546,7 +527,6 @@ def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z,
     Output("network_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input('3d_coordinates_plot', 'clickData'),
-
 )
 def update_network_plot(selected_run, click_data):
     if selected_run is None:
@@ -559,9 +539,21 @@ def update_network_plot(selected_run, click_data):
 
     if ctx.triggered_id == "coordinates_plot_dropdown_runs":
 
+        node_trace, edge_trace = compute_network_plot_trace(network)
+
         selected_anchor = x_anchor[np.random.randint(0, x_anchor.shape[0])]
-        network_fig = create_figure_from_network(network, selected_anchor)
-        return network_fig
+        node_trace.marker.color = np.logical_not(selected_anchor.astype(bool)).astype(int)
+
+        layout = go.Layout(
+            showlegend=False,
+            hovermode='closest',
+            margin=dict(b=20, l=5, r=5, t=40),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+
+        fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
+        #network_fig = create_figure_from_network(network, selected_anchor)
+        return fig
 
     selected_anchor = x_anchor[click_data["points"][0]["pointNumber"]]
     fig_patch = Patch()
@@ -575,23 +567,26 @@ def update_network_plot(selected_run, click_data):
 
 
 @callback(
-    Output("cv_plot","figure"),
+    Output("cv_network_plots", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input("cv_selector_dropdown", "value"),
     Input("node_scaling_dropdown", "value")
 )
-def update_cv_network_plot(selected_run: str, cv_type, scaling):
+def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     if selected_run is None:
         return {}
 
-    cv_dim=4
+    coords_n = 4
 
     file_path = f"{results_path}{selected_run}/"
     network = dm.open_network(file_path, "network")
 
-    seed = 100
-    pos = nx.spring_layout(network, seed=seed, k=2/np.sqrt(len(network)))
-    pos = np.array(list(pos.values()))
+    cv_path = "cv_optim.npz"
+    if cv_type == "degree_weighted":
+        cv_path = "cv_optim_degree_weighted.npz"
+
+    cv_optim = np.load(file_path + cv_path)
+    alphas = cv_optim["alphas"]
 
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
 
@@ -599,78 +594,51 @@ def update_cv_network_plot(selected_run: str, cv_type, scaling):
         lower_scaling = 4
         upper_scaling = 0.15
         size_adjustment = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
-                    max(degrees) - min(degrees)) + lower_scaling) * x)
+                max(degrees) - min(degrees)) + lower_scaling) * x)
     else:
-        size_adjustment = np.vectorize(lambda x: np.log(300*x))
+        size_adjustment = np.vectorize(lambda x: np.log(300 * x))
 
     degrees_adjusted = size_adjustment(degrees)
 
+    # Patch if possible
+    if ctx.triggered_id == "node_scaling_dropdown":
+        fig_patch = Patch()
 
+        for i in range(1, coords_n*2, 2):
+            fig_patch["data"][i]["marker"]["size"] = degrees_adjusted
 
-    cv_path = "cv_optim.npz"
-    if cv_type == "degree_weighted":
-        cv_path = "cv_optim_degree_weighted.npz"
-    cv_optim = np.load(file_path + cv_path)
-    alphas = cv_optim["alphas"]
-    xi = np.load(file_path + "transition_manifold.npy")
-    xi_fit = cv_optim["xi_fit"]
+        return fig_patch
+
+    if ctx.triggered_id == "cv_selector_dropdown":
+        fig_patch = Patch()
+
+        for i in range(0, coords_n):
+            this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
+
+            fig_patch["data"][i*2 + 1]["marker"]["color"] = this_alpha
+            fig_patch["data"][i*2 + 1]["marker"]["coloraxis"] = "coloraxis"
+
+        return fig_patch
 
     fig = ps.make_subplots(rows=4,
-                           cols=2,
-                           vertical_spacing=0.02,
-                           horizontal_spacing=0.02)
+                           cols=1,
+                           vertical_spacing=0.005,
+                           horizontal_spacing=0.005)
 
+    node_trace, edge_trace = compute_network_plot_trace(network)
 
+    node_trace.marker.size = degrees_adjusted
+    node_trace.customdata = degrees
+    node_trace.hovertemplate = "Degree: %{customdata}"
 
-    node_trace = go.Scatter(
-        x=pos[:, 0], y=pos[:, 1],
-        mode="markers",
-        marker=dict(showscale=True, size=degrees_adjusted),
-        customdata=degrees,
-        hovertemplate="Degree: %{customdata}",
-    )
-
-    edge_x = []
-    edge_y = []
-    for edge in network.edges():
-        x0, y0 = pos[int(edge[0])]
-        x1, y1 = pos[int(edge[1])]
-
-        edge_x.append(x0)
-        edge_x.append(x1)
-        edge_x.append(None)
-        edge_y.append(y0)
-        edge_y.append(y1)
-        edge_y.append(None)
-
-    edge_trace = go.Scatter(
-        x=edge_x,
-        y=edge_y,
-        mode='lines',
-        line=dict(width=0.5, color='#888'),
-        hoverinfo='none',
-    )
-
-    for i in range(0, cv_dim):
-
+    for i in range(0, coords_n):
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
         node_trace.marker.color = this_alpha
         node_trace.marker.coloraxis = "coloraxis"
 
-        fig.add_trace(edge_trace, row=i+1, col=1)
-        fig.add_trace(node_trace, row=i+1, col=1)
-
-        xi_xifit = go.Scatter(
-            x=xi[:, i],
-            y=xi_fit[:, i],
-            mode="markers",
-            customdata=degrees,
-            hovertemplate="Degree: %{customdata}",
-
-
-        )
-        fig.add_trace(xi_xifit, row=i+1, col=2)
+        fig.add_trace(edge_trace, row=i + 1, col=1)
+        fig.add_trace(node_trace, row=i + 1, col=1)
 
     fig.update_layout(showlegend=False,
                       hovermode='closest',
@@ -679,7 +647,49 @@ def update_cv_network_plot(selected_run: str, cv_type, scaling):
     fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
     fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
 
+    return fig
 
+@callback(
+    Output("cv_xixifit_plots", "figure"),
+    Input("coordinates_plot_dropdown_runs", "value"),
+    Input("cv_selector_dropdown", "value")
+)
+def update_cv_xixifit_plots(selected_run: str, cv_type: str):
+    if selected_run is None:
+        return {}
+
+    file_path = f"{results_path}{selected_run}/"
+
+    coords_n: int = 4
+
+    cv_path = "cv_optim.npz"
+    if cv_type == "degree_weighted":
+        cv_path = "cv_optim_degree_weighted.npz"
+    cv_optim = np.load(file_path + cv_path)
+    xi = np.load(file_path + "transition_manifold.npy")
+    xi_fit = cv_optim["xi_fit"]
+
+    fig = ps.make_subplots(rows=4,
+                           cols=1,
+                           vertical_spacing=0.005,
+                           horizontal_spacing=0.005,
+                           shared_xaxes=True,
+                           shared_yaxes=True)
+
+    for i in range(0, coords_n):
+
+        xi_xifit = go.Scatter(
+            x=xi[:, i],
+            y=xi_fit[:, i],
+            mode="markers",
+        )
+        xi_xifit.marker.coloraxis = "coloraxis"
+        fig.add_trace(xi_xifit, row=i + 1, col=1)
+
+
+    fig.update_layout(showlegend=False)
+    fig.update_xaxes(zeroline=False, showticklabels=True)
+    fig.update_yaxes(zeroline=False, showticklabels=True)
 
     return fig
 
@@ -700,9 +710,9 @@ def update_logs(selected_run: str) -> str:
 # App layout
 app.layout = html.Div([
     html.Div(children="Run overview"),
-    create_table(df, "data_table"),
+    get_table_html(df, "data_table"),
     html.Button("Unselect all", id="unselect_all", n_clicks=0),
-    create_tabs("plot_tabs")
+    get_tabs_html("plot_tabs")
     ])
 
 
