@@ -1,18 +1,19 @@
-from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx
-from dash.dash_table.Format import Format, Scheme
+import json
+import re
+import sys
+
+import colorlover
+import networkx as nx
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.subplots as ps
-import colorlover
-import pandas as pd
-import sponet_cv_testing.datamanagement as dm
-import numpy as np
 import sponet.collective_variables as cv
-import networkx as nx
-import re
-import json
-import sys
-import math
+from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx
+from dash.dash_table.Format import Format, Scheme
+
+import sponet_cv_testing.datamanagement as dm
 
 app = Dash(__name__)
 
@@ -24,6 +25,8 @@ results_path: str = "../data/results/"
 
 results_table_path = "results_table.csv"
 
+# call with command line argument 1 to load test csv
+#Calling with small dataset significantly reduces initial load time
 if len(args) > 0:
     test = args[0]
     if test == "1":
@@ -282,52 +285,7 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
         dcc.Tab(label="Coordinate Plot",
                 value="tab_2",
                 children=[
-                    html.Div([
-                        # Dropdowns #####################
-                        html.Div([
-                            html.Label("Runs:"),
-                            dcc.Dropdown(id="coordinates_plot_dropdown_runs",
-                                         placeholder="Select entries in the table above by clicking on the boxes on the left side.",
-                                         style={"width": "45vw"}
-                                        ),
-                            html.Div([
-                                html.Div([
-                                    html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
-                                ]),
-                                dcc.Clipboard(
-                                    target_id="coordinates_plot_dropdown_runs",
-                                    title="Copy run id",
-                                    style={"width": "2vw"}
-                                ),
-                            ], style={'display': 'flex', 'flex-direction': 'row'})
-                        ]),
-                        html.Div([
-                            html.Label("x-axis:"),
-                            dcc.Dropdown(id="coordinates_plot_dropdown_x",
-                                         value="1",
-                                         style={'width': '10vw'}),
-                        ]),
-                        html.Div([
-                            html.Label("y-axis:"),
-                            dcc.Dropdown(id="coordinates_plot_dropdown_y",
-                                         value="2",
-                                         style={'width': '10vw'}),
-                        ]),
-                        html.Div([
-                            html.Label("z-axis:"),
-                            dcc.Dropdown(id="coordinates_plot_dropdown_z",
-                                         value="3",
-                                         style={'width': '10vw'}),
-                        ]),
-                        html.Div([
-                            html.Label("color:"),
-                            dcc.Dropdown(id="coordinates_plot_dropdown_color",
-                                         options=["shares", "weighted_shares"],
-                                         value="weighted_shares",
-                                         style={'width': '10vw'})
-                        ])
-                    ], style={'display': 'flex', 'flex-direction': 'row'}),
-
+                    get_coords_network_plots_html(),
 
                     html.Div([
                         html.Table([
@@ -348,30 +306,28 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
                                 ])
 
                             ])
-                            ], style={"border": "1px solid"}
+                        ], style={"border": "1px solid"}
                         )
                     ]),
 
                     #################Plots
                     html.Div([
-                        dcc.Graph(
-                            id="3d_coordinates_plot",
-                            mathjax=True,
-                            style={'width': '60vw', 'height': '70vh'}
-                        ),
-                        dcc.Graph(
-                            id="network_plot",
-                            mathjax=True,
-                            style={'width': '40vw', 'height': '70vh'}
-                        )
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="3d_coordinates_plot",
+                                mathjax=True,
+                                style={'width': '60vw', 'height': '70vh'}
+                            )),
+                        dcc.Loading(
+                            dcc.Graph(
+                                id="network_plot",
+                                mathjax=True,
+                                style={'width': '40vw', 'height': '70vh'}
+                            ))
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     #################Plots and Logs
                     get_cv_plots_html(),
-
-
-
-
 
                         html.Div([
                             html.H4("Logs"),
@@ -382,6 +338,58 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
                 ])
     ])
     return tabs
+
+
+def get_coords_network_plots_html():
+    coords_network_plots = html.Div([
+        # Dropdowns #####################
+        html.Div([
+            html.Label("Runs:"),
+            dcc.Dropdown(id="coordinates_plot_dropdown_runs",
+                         placeholder="Select entries in the table above by clicking on the boxes on the left side.",
+                         style={"width": "45vw"}
+                         ),
+            html.Div([
+                html.Div([
+                    html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
+                ]),
+                dcc.Clipboard(
+                    target_id="coordinates_plot_dropdown_runs",
+                    title="Copy run id",
+                    style={"width": "2vw"}
+                ),
+            ], style={'display': 'flex', 'flex-direction': 'row'})
+        ]),
+        html.Div([
+            html.Label("x-axis:"),
+            dcc.Dropdown(id="coordinates_plot_dropdown_x",
+                         value="1",
+                         style={'width': '10vw'}),
+        ]),
+        html.Div([
+            html.Label("y-axis:"),
+            dcc.Dropdown(id="coordinates_plot_dropdown_y",
+                         value="2",
+                         style={'width': '10vw'}),
+        ]),
+        html.Div([
+            html.Label("z-axis:"),
+            dcc.Dropdown(id="coordinates_plot_dropdown_z",
+                         value="3",
+                         style={'width': '10vw'}),
+        ]),
+        html.Div([
+            html.Label("color:"),
+            dcc.Dropdown(id="coordinates_plot_dropdown_color",
+                         options=["shares", "weighted_shares"],
+                         value="weighted_shares",
+                         style={'width': '10vw'})
+        ])
+    ], style={'display': 'flex', 'flex-direction': 'row'})
+
+    return coords_network_plots
+
+
 
 
 def get_cv_plots_html():
@@ -413,16 +421,20 @@ def get_cv_plots_html():
         ], style={'display': 'flex', 'flex-direction': 'row'}),
 
         html.Div([
-            dcc.Graph(
-                id="cv_network_plots",
-                mathjax=True,
-                style={'width': '50vw', 'height': '125vh'}
+            dcc.Loading(
+                dcc.Graph(
+                    id="cv_network_plots",
+                    mathjax=True,
+                    style={'width': '50vw', 'height': '125vh'}
+                )
             ),
-            dcc.Graph(
-                id="cv_xixifit_plots",
-                mathjax=True,
-                style={'width': '50vw', 'height': '125vh'}
-            ),
+            dcc.Loading(
+                dcc.Graph(
+                    id="cv_xixifit_plots",
+                    mathjax=True,
+                    style={'width': '50vw', 'height': '125vh'}
+                )
+            )
         ], style={'display': 'flex', 'flex-direction': 'row'}),
     ])
 
@@ -447,12 +459,6 @@ def update_run_dropdown(data, selected_rows: list[int], _, selected_run):
         selected_rows_values.extend(reruns)
 
     return  selected_rows_values
-
-
-
-
-
-
 
 
 @callback(
@@ -532,7 +538,6 @@ def update_network_plot(selected_run, click_data):
     if selected_run is None:
         return {}
 
-
     file_path = f"{results_path}{selected_run}/"
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
     network = dm.open_network(file_path, "network")
@@ -544,6 +549,10 @@ def update_network_plot(selected_run, click_data):
         selected_anchor = x_anchor[np.random.randint(0, x_anchor.shape[0])]
         node_trace.marker.color = np.logical_not(selected_anchor.astype(bool)).astype(int)
 
+        node_trace.customdata = np.transpose(np.array([np.array(network.degree)[:, 1:].flatten().astype(int)]))
+        node_trace.hovertemplate = ("<b>Degree</b>: %{customdata[0]}<br>"
+                                    "<extra></extra>")
+
         layout = go.Layout(
             showlegend=False,
             hovermode='closest',
@@ -552,7 +561,6 @@ def update_network_plot(selected_run, click_data):
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
 
         fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
-        #network_fig = create_figure_from_network(network, selected_anchor)
         return fig
 
     selected_anchor = x_anchor[click_data["points"][0]["pointNumber"]]
@@ -623,24 +631,36 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     fig = ps.make_subplots(rows=4,
                            cols=1,
                            vertical_spacing=0.005,
-                           horizontal_spacing=0.005)
+                           horizontal_spacing=0,
+                           shared_xaxes=True)
 
     node_trace, edge_trace = compute_network_plot_trace(network)
 
     node_trace.marker.size = degrees_adjusted
-    node_trace.customdata = degrees
-    node_trace.hovertemplate = "Degree: %{customdata}"
+
+    custom_data = [degrees]
+
 
     for i in range(0, coords_n):
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
+
         node_trace.marker.color = this_alpha
         node_trace.marker.coloraxis = "coloraxis"
+
+        #node_trace = pd.DataFrame(data={"degrees": degrees,
+                                            # "color": this_alpha})
+
+        node_trace.customdata = np.transpose(np.stack([degrees, this_alpha]))
+        node_trace.hovertemplate = ("<b>Degree</b>: %{customdata[0]}<br>"
+                                    "<b>Value</b>: %{customdata[1]:.3f}<br>"
+                                    "<extra></extra>")
 
         fig.add_trace(edge_trace, row=i + 1, col=1)
         fig.add_trace(node_trace, row=i + 1, col=1)
 
-    fig.update_layout(showlegend=False,
+    fig.update_layout(
+                      showlegend=False,
                       hovermode='closest',
                       coloraxis=dict(colorscale="portland"))
 
@@ -672,7 +692,7 @@ def update_cv_xixifit_plots(selected_run: str, cv_type: str):
     fig = ps.make_subplots(rows=4,
                            cols=1,
                            vertical_spacing=0.005,
-                           horizontal_spacing=0.005,
+                           horizontal_spacing=0,
                            shared_xaxes=True,
                            shared_yaxes=True)
 
@@ -685,11 +705,13 @@ def update_cv_xixifit_plots(selected_run: str, cv_type: str):
         )
         xi_xifit.marker.coloraxis = "coloraxis"
         fig.add_trace(xi_xifit, row=i + 1, col=1)
+        fig.update_yaxes(title_text=f"$\\bar\\varphi_{i+1}$", row=i+1, col=1)
 
 
     fig.update_layout(showlegend=False)
     fig.update_xaxes(zeroline=False, showticklabels=True)
     fig.update_yaxes(zeroline=False, showticklabels=True)
+    fig.update_xaxes(title_text="$\\varphi_i$", row=coords_n, col=1)
 
     return fig
 
