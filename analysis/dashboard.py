@@ -319,13 +319,19 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
                                 id="3d_coordinates_plot",
                                 mathjax=True,
                                 style={'width': '60vw', 'height': '70vh'}
-                            )], overlay_style={"visibility": "visible", "opacity": .5}),
+                            )],
+                            overlay_style={"visibility": "visible", "opacity": .5},
+                            delay_show=200
+                        ),
                         dcc.Loading([
                             dcc.Graph(
                                 id="network_plot",
                                 mathjax=True,
                                 style={'width': '40vw', 'height': '70vh'}
-                            )], overlay_style={"visibility": "visible", "opacity": .5}),
+                            )],
+                            overlay_style={"visibility": "visible", "opacity": .5},
+                            delay_show=200
+                        ),
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     #################Plots and Logs
@@ -426,14 +432,18 @@ def get_cv_plots_html():
                     id="cv_network_plots",
                     mathjax=True,
                     style={'width': '50vw', 'height': '125vh'}
-                )], overlay_style={"visibility": "visible", "opacity": .5}
+                )],
+                overlay_style={"visibility": "visible", "opacity": .5},
+                delay_show=200,
             ),
             dcc.Loading([
                 dcc.Graph(
                     id="cv_xixifit_plots",
                     mathjax=True,
                     style={'width': '50vw', 'height': '125vh'}
-                )], overlay_style={"visibility": "visible", "opacity": .5}
+                )],
+                overlay_style={"visibility": "visible", "opacity": .5},
+                delay_show=200,
             )
         ], style={'display': 'flex', 'flex-direction': 'row'}),
     ])
@@ -577,12 +587,14 @@ def update_network_plot(selected_run, click_data):
     Output("cv_network_plots", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input("cv_selector_dropdown", "value"),
-    Input("node_scaling_dropdown", "value")
+    Input("node_scaling_dropdown", "value"),
 )
 def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     if selected_run is None:
         return {}
 
+    #{'points': [{'curveNumber': 5, 'pointNumber': 344, 'pointIndex': 344, 'x': -0.4659979045391083, 'y': -0.14735986292362213,
+    # 'marker.size': 9, 'marker.color': -0.9999469822103596, 'bbox': {'x0': 216.69, 'x1': 225.69, 'y0': 2693.5875, 'y1': 2702.5875}, 'customdata': [2, -0.9999469822103596]}]}
     coords_n = 4
 
     file_path = f"{results_path}{selected_run}/"
