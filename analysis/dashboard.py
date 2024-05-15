@@ -569,13 +569,15 @@ def update_network_plot(selected_run, click_data):
         node_trace.customdata = np.transpose(np.array([np.array(network.degree)[:, 1:].flatten().astype(int)]))
         node_trace.hovertemplate = ("<b>Degree</b>: %{customdata[0]}<br>"
                                     "<extra></extra>")
+        node_trace.marker.showscale=False
 
         layout = go.Layout(
             showlegend=False,
             hovermode='closest',
             margin=dict(b=20, l=5, r=5, t=40),
             xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            coloraxis=dict(showscale=False))
 
         fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
         return fig
