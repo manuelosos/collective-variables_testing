@@ -598,10 +598,11 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
 
     if scaling == "linear":
-        lower_scaling = 4
-        upper_scaling = 0.15
-        size_adjustment = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
-                max(degrees) - min(degrees)) + lower_scaling) * x)
+        lower_scaling = 2
+        upper_scaling = 0.5
+        size_adjustment = np.vectorize(lambda x: 0.5*x+8)
+        #size_adjustment = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
+         #       max(degrees) - min(degrees)) + lower_scaling) * x)
     else:
         size_adjustment = np.vectorize(lambda x: np.log(300 * x))
 
