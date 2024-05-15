@@ -12,6 +12,8 @@ import plotly.subplots as ps
 import sponet.collective_variables as cv
 from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx
 from dash.dash_table.Format import Format, Scheme
+from dash.exceptions import PreventUpdate
+import dash_bootstrap_components as dbc
 
 import sponet_cv_testing.datamanagement as dm
 
@@ -312,18 +314,18 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
 
                     #################Plots
                     html.Div([
-                        dcc.Loading(
+                        dcc.Loading([
                             dcc.Graph(
                                 id="3d_coordinates_plot",
                                 mathjax=True,
                                 style={'width': '60vw', 'height': '70vh'}
-                            )),
-                        dcc.Loading(
+                            )], overlay_style={"visibility": "visible", "opacity": .5}),
+                        dcc.Loading([
                             dcc.Graph(
                                 id="network_plot",
                                 mathjax=True,
                                 style={'width': '40vw', 'height': '70vh'}
-                            ))
+                            )], overlay_style={"visibility": "visible", "opacity": .5}),
                     ], style={'display': 'flex', 'flex-direction': 'row'}),
 
                     #################Plots and Logs
@@ -390,8 +392,6 @@ def get_coords_network_plots_html():
     return coords_network_plots
 
 
-
-
 def get_cv_plots_html():
 
     cv_plots = html.Div([
@@ -421,19 +421,19 @@ def get_cv_plots_html():
         ], style={'display': 'flex', 'flex-direction': 'row'}),
 
         html.Div([
-            dcc.Loading(
+            dcc.Loading([
                 dcc.Graph(
                     id="cv_network_plots",
                     mathjax=True,
                     style={'width': '50vw', 'height': '125vh'}
-                )
+                )], overlay_style={"visibility": "visible", "opacity": .5}
             ),
-            dcc.Loading(
+            dcc.Loading([
                 dcc.Graph(
                     id="cv_xixifit_plots",
                     mathjax=True,
                     style={'width': '50vw', 'height': '125vh'}
-                )
+                )], overlay_style={"visibility": "visible", "opacity": .5}
             )
         ], style={'display': 'flex', 'flex-direction': 'row'}),
     ])
@@ -469,7 +469,7 @@ def update_run_dropdown(data, selected_rows: list[int], _, selected_run):
 )
 def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
     if run_id is None:
-        return [[""], [""], [""]]
+        raise PreventUpdate
     run = df.loc[run_id]
     options = [f"{i}" for i in range(1, run["cv_dim"] + 1)]
     return [options, options, options]
@@ -502,8 +502,7 @@ def update_selected_run_specifics_table(selected_run: str):
 )
 def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
     if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
-        return {}
-
+        raise PreventUpdate
     file_path = f"{results_path}{selected_run}/"
     xi = np.load(file_path + "transition_manifold.npy")
     x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
