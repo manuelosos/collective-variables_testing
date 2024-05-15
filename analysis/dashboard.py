@@ -282,73 +282,31 @@ def unselect_table_entries(clicks) -> list[int]:
 def get_tabs_html(tabs_id: str) -> dcc.Tabs:
     tabs = dcc.Tabs(id=tabs_id, value="tab_2", children=[
         #dcc.Tab(label="Overview Plots",
-         #       value="tab_1",
-          #      children=html.Div(id="overview_plot")),
+        #       value="tab_1",
+        #      children=html.Div(id="overview_plot")),
         dcc.Tab(label="Coordinate Plot",
                 value="tab_2",
                 children=[
+                    get_coords_network_dropdowns_html(),
+
+                    get_run_specifics_html(),
+
                     get_coords_network_plots_html(),
 
-                    html.Div([
-                        html.Table([
-                            html.Thead(
-                                html.Tr([
-                                    html.Td("r_ab"),
-                                    html.Td("r_ba"),
-                                    html.Td("rt_ab"),
-                                    html.Td("r_ba"),
-                                ])
-                            ),
-                            html.Tbody([
-                                html.Tr([
-                                    html.Td(id="selected_run_r_ab"),
-                                    html.Td(id="selected_run_r_ba"),
-                                    html.Td(id="selected_run_rt_ab"),
-                                    html.Td(id="selected_run_rt_ba"),
-                                ])
-
-                            ])
-                        ], style={"border": "1px solid"}
-                        )
-                    ]),
-
-                    #################Plots
-                    html.Div([
-                        dcc.Loading([
-                            dcc.Graph(
-                                id="3d_coordinates_plot",
-                                mathjax=True,
-                                style={'width': '60vw', 'height': '70vh'}
-                            )],
-                            overlay_style={"visibility": "visible", "opacity": .5},
-                            delay_show=200
-                        ),
-                        dcc.Loading([
-                            dcc.Graph(
-                                id="network_plot",
-                                mathjax=True,
-                                style={'width': '40vw', 'height': '70vh'}
-                            )],
-                            overlay_style={"visibility": "visible", "opacity": .5},
-                            delay_show=200
-                        ),
-                    ], style={'display': 'flex', 'flex-direction': 'row'}),
-
-                    #################Plots and Logs
                     get_cv_plots_html(),
 
-                        html.Div([
-                            html.H4("Logs"),
-                            html.Pre("Krass hier steht text",
-                                     id="runlog")
-                        ]),
+                    html.Div([
+                        html.H4("Logs"),
+                        html.Pre("Krass hier steht text",
+                                 id="runlog")
+                    ]),
 
                 ])
     ])
     return tabs
 
 
-def get_coords_network_plots_html():
+def get_coords_network_dropdowns_html():
     coords_network_plots = html.Div([
         # Dropdowns #####################
         html.Div([
@@ -395,6 +353,56 @@ def get_coords_network_plots_html():
         ])
     ], style={'display': 'flex', 'flex-direction': 'row'})
 
+    return coords_network_plots
+
+
+def get_run_specifics_html():
+    specifics = html.Div([
+        html.Table([
+            html.Thead(
+                html.Tr([
+                    html.Td("r_ab"),
+                    html.Td("r_ba"),
+                    html.Td("rt_ab"),
+                    html.Td("r_ba"),
+                ])
+            ),
+            html.Tbody([
+                html.Tr([
+                    html.Td(id="selected_run_r_ab"),
+                    html.Td(id="selected_run_r_ba"),
+                    html.Td(id="selected_run_rt_ab"),
+                    html.Td(id="selected_run_rt_ba"),
+                ])
+
+            ])
+        ], style={"border": "1px solid"}
+        )
+    ])
+    return specifics
+
+
+def get_coords_network_plots_html():
+    coords_network_plots = html.Div([
+        dcc.Loading([
+            dcc.Graph(
+                id="3d_coordinates_plot",
+                mathjax=True,
+                style={'width': '60vw', 'height': '70vh'}
+            )],
+            overlay_style={"visibility": "visible", "opacity": .5},
+            delay_show=200
+        ),
+        dcc.Loading([
+            dcc.Graph(
+                id="network_plot",
+                mathjax=True,
+                style={'width': '40vw', 'height': '70vh'}
+            )],
+            overlay_style={"visibility": "visible", "opacity": .5},
+            delay_show=200
+        ),
+    ], style={'display': 'flex', 'flex-direction': 'row'})
     return coords_network_plots
 
 
