@@ -10,9 +10,10 @@ import plotly.express as px
 import plotly.graph_objects as go
 import plotly.subplots as ps
 import sponet.collective_variables as cv
-from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx
+from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Patch, ctx, no_update
 from dash.dash_table.Format import Format, Scheme
 from dash.exceptions import PreventUpdate
+from dash_extensions import Keyboard
 import dash_bootstrap_components as dbc
 
 import sponet_cv_testing.datamanagement as dm
@@ -46,7 +47,6 @@ def compute_network_plot_trace(network: nx.Graph, seed: int=100):
     node_trace = go.Scatter(
         x=pos[:, 0], y=pos[:, 1],
         mode="markers",
-        marker=dict(showscale=True),
     )
 
     edge_x = []
@@ -315,6 +315,10 @@ def get_coords_network_dropdowns_html():
                          placeholder="Select entries in the table above by clicking on the boxes on the left side.",
                          style={"width": "45vw"}
                          ),
+            Keyboard(
+                id="keyboard_run_switcher",
+                captureKeys=[".", ","]
+            ),
             html.Div([
                 html.Div([
                     html.Button("Add reruns", id="add_reruns_button", n_clicks=0),
@@ -324,6 +328,7 @@ def get_coords_network_dropdowns_html():
                     title="Copy run id",
                     style={"width": "2vw"}
                 ),
+                html.Pre("You can switch between the runs in the dropdown by pressing '.' or ','")
             ], style={'display': 'flex', 'flex-direction': 'row'})
         ]),
         html.Div([
@@ -383,26 +388,27 @@ def get_run_specifics_html():
 
 
 def get_coords_network_plots_html():
-    coords_network_plots = html.Div([
-        dcc.Loading([
-            dcc.Graph(
-                id="3d_coordinates_plot",
-                mathjax=True,
-                style={'width': '60vw', 'height': '70vh'}
-            )],
-            overlay_style={"visibility": "visible", "opacity": .5},
-            delay_show=200
-        ),
-        dcc.Loading([
-            dcc.Graph(
-                id="network_plot",
-                mathjax=True,
-                style={'width': '40vw', 'height': '70vh'}
-            )],
-            overlay_style={"visibility": "visible", "opacity": .5},
-            delay_show=200
-        ),
-    ], style={'display': 'flex', 'flex-direction': 'row'})
+    coords_network_plots = (
+        html.Div([
+            dcc.Loading([
+                dcc.Graph(
+                    id="3d_coordinates_plot",
+                    mathjax=True,
+                    style={'width': '59vw', 'height': '70vh'}
+                )],
+                overlay_style={"visibility": "visible", "opacity": .5},
+                delay_show=200
+            ),
+            dcc.Loading([
+                dcc.Graph(
+                    id="network_plot",
+                    mathjax=True,
+                    style={'width': '39vw', 'height': '70vh'}
+                )],
+                overlay_style={"visibility": "visible", "opacity": .5},
+                delay_show=200
+            ),
+        ], style={'display': 'flex', 'flex-direction': 'row'}))
     return coords_network_plots
 
 
@@ -422,7 +428,7 @@ def get_cv_plots_html():
                              )
             ],),
             html.Div([
-                html.Label("node scaling"),
+                html.Label("node scaling:"),
                 dcc.Dropdown(id="node_scaling_dropdown",
                              options=[
                                  {'label': 'Linear', 'value': 'linear'},
@@ -491,6 +497,23 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
     run = df.loc[run_id]
     options = [f"{i}" for i in range(1, run["cv_dim"] + 1)]
     return [options, options, options]
+
+@callback(
+    Output("coordinates_plot_dropdown_runs", "value"),
+    Input("keyboard_run_switcher", "n_keydowns"),
+    State("coordinates_plot_dropdown_runs", "options"),
+    State("keyboard_run_switcher", "keydown"),
+    State("coordinates_plot_dropdown_runs", "value")
+)
+def switch_selected_run(_, run_options, event, selected_run):
+    if run_options is None or len(run_options) <= 1:
+        return no_update
+
+    current_index: int = run_options.index(selected_run)
+    if event["key"] == '.': # '.' = "up"
+        return run_options[(current_index - 1) % len(run_options)]
+    else:
+        return run_options[(current_index + 1) % len(run_options)]
 
 
 @callback(
@@ -659,6 +682,7 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     node_trace, edge_trace = compute_network_plot_trace(network)
 
     node_trace.marker.size = degrees_adjusted
+    node_trace.marker.showscale = True
 
     custom_data = [degrees]
 
@@ -682,12 +706,14 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
         fig.add_trace(node_trace, row=i + 1, col=1)
 
     fig.update_layout(
-                      showlegend=False,
-                      hovermode='closest',
-                      coloraxis=dict(colorscale="portland"))
+        title =selected_run,
+        showlegend=False,
+        hovermode='closest',
+        coloraxis=dict(colorscale="portland"))
 
     fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
     fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
+
 
     return fig
 

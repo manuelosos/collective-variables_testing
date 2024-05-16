@@ -18,6 +18,7 @@ seaborn = "^0.13.2"
 matplotlib = "^3.7.1"
 dash = "^2.13.0"
 colorlover = "^0.3.0"
+dash-extensions = "^1.0.15"
 
 [build-system]
 requires = ["poetry-core"]
