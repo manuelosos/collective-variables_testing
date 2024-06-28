@@ -617,17 +617,16 @@ def update_network_plot(selected_run, click_data):
 
 
 @callback(
-    Output("cv_network_plots", "figure"),
+    Output("cv_network_plots", "figure", allow_duplicate=True),
     Input("coordinates_plot_dropdown_runs", "value"),
     Input("cv_selector_dropdown", "value"),
     Input("node_scaling_dropdown", "value"),
+    prevent_initial_call=True
 )
 def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     if selected_run is None:
         return {}
 
-    #{'points': [{'curveNumber': 5, 'pointNumber': 344, 'pointIndex': 344, 'x': -0.4659979045391083, 'y': -0.14735986292362213,
-    # 'marker.size': 9, 'marker.color': -0.9999469822103596, 'bbox': {'x0': 216.69, 'x1': 225.69, 'y0': 2693.5875, 'y1': 2702.5875}, 'customdata': [2, -0.9999469822103596]}]}
     coords_n = 4
 
     file_path = f"{results_path}{selected_run}/"
@@ -643,11 +642,7 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
 
     if scaling == "linear":
-        lower_scaling = 2
-        upper_scaling = 0.5
         size_adjustment = np.vectorize(lambda x: 0.5*x+8)
-        #size_adjustment = np.vectorize(lambda x: ((x - min(degrees)) * (upper_scaling - lower_scaling) / (
-         #       max(degrees) - min(degrees)) + lower_scaling) * x)
     else:
         size_adjustment = np.vectorize(lambda x: np.log(300 * x))
 
@@ -686,7 +681,6 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
 
     custom_data = [degrees]
 
-
     for i in range(0, coords_n):
         this_alpha = alphas[:, i] / np.max(np.abs(alphas[:, i]))
 
@@ -699,8 +693,8 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
 
         node_trace.customdata = np.transpose(np.stack([degrees, this_alpha]))
         node_trace.hovertemplate = ("<b>Degree</b>: %{customdata[0]}<br>"
-                                    "<b>Value</b>: %{customdata[1]:.3f}<br>"
-                                    "<extra></extra>")
+                                    "<b>Value</b>: %{customdata[1]:.3f}<br>")
+                                    #"<extra></extra>")
 
         fig.add_trace(edge_trace, row=i + 1, col=1)
         fig.add_trace(node_trace, row=i + 1, col=1)
@@ -714,21 +708,24 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
     fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
     fig.update_yaxes(showgrid=False, zeroline=False, showticklabels=False)
 
-
     return fig
 
 @callback(
-    Output("cv_xixifit_plots", "figure"),
+    Output("cv_xixifit_plots", "figure", allow_duplicate=True),
     Input("coordinates_plot_dropdown_runs", "value"),
-    Input("cv_selector_dropdown", "value")
+    Input("cv_selector_dropdown", "value"),
+    prevent_initial_call=True
 )
 def update_cv_xixifit_plots(selected_run: str, cv_type: str):
     if selected_run is None:
         return {}
 
+    coords_n: int = 4
+
     file_path = f"{results_path}{selected_run}/"
 
-    coords_n: int = 4
+    # {'points': [{'curveNumber': 5, 'pointNumber': 344, 'pointIndex': 344, 'x': -0.4659979045391083, 'y': -0.14735986292362213,
+    # 'marker.size': 9, 'marker.color': -0.9999469822103596, 'bbox': {'x0': 216.69, 'x1': 225.69, 'y0': 2693.5875, 'y1': 2702.5875}, 'customdata': [2, -0.9999469822103596]}]}
 
     cv_path = "cv_optim.npz"
     if cv_type == "degree_weighted":
@@ -755,13 +752,56 @@ def update_cv_xixifit_plots(selected_run: str, cv_type: str):
         fig.add_trace(xi_xifit, row=i + 1, col=1)
         fig.update_yaxes(title_text=f"$\\bar\\varphi_{i+1}$", row=i+1, col=1)
 
-
     fig.update_layout(showlegend=False)
     fig.update_xaxes(zeroline=False, showticklabels=True)
     fig.update_yaxes(zeroline=False, showticklabels=True)
     fig.update_xaxes(title_text="$\\varphi_i$", row=coords_n, col=1)
 
     return fig
+
+@callback(
+    Output("cv_network_plots", "figure", allow_duplicate=True),
+    Output("cv_xixifit_plots", "figure", allow_duplicate=True),
+    Input("cv_network_plots", "clickData"),
+    Input("cv_xixifit_plots", "clickData"),
+    State("cv_network_plots", "figure"),
+    State("cv_xixifit_plots", "figure"),
+    prevent_initial_call=True,
+)
+def update_cv_plots_on_click(network_click, xixi_click, network_fig, xixi_fig):
+
+    coords_n = 4
+    xixi_fig_patch = Patch()
+    network_fig_patch = Patch()
+
+    if ctx.triggered_id == "cv_network_plots":
+        point_number = network_click["points"][0]["pointNumber"]
+        n = len(network_fig["data"][0]["x"])
+
+    elif ctx.triggered_id == "cv_xixifit_plots":
+        point_number = xixi_click["points"][0]["pointNumber"]
+        n = len(network_fig)
+
+    for i in range(coords_n):
+        xixi_fig_patch["data"][i]["marker"]["size"] = [14 if i == point_number else 7 for i in range(n)]
+        xixi_fig_patch["data"][i]["marker"]["color"] = ["red" if i == point_number else "blue" for i in range(n)]
+
+    for i in range(1, coords_n * 2, 2):
+        network_fig_patch["data"][i]["marker"]["size"] = 3
+
+
+    return no_update, xixi_fig_patch
+
+
+
+
+
+
+
+
+
+
+    return
 
 
 @callback(

@@ -215,7 +215,7 @@ def create_runfiles(
     triad_probabilities = [1]
     if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [1]
+    lag_time_l = [1.5, 2.0, 2.5, 3.0]
     num_anchor_points_l = [2000]
     num_samples_per_anchor_l = [300]
 
