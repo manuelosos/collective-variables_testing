@@ -234,7 +234,7 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
     no_speedup = num_anchor**2 * num_samples**2 * dimension
     speedup = (num_anchor**2 - n_speedup) *num_samples**2*dimension*num_anchor + n_speedup*num_anchor
     if no_speedup > speedup:
-        logger.debug(f"speedup was sucesfull ")
+        logger.debug(f"speedup was successful ")
 
     logger.debug(f"Difference {no_speedup-speedup}")
 

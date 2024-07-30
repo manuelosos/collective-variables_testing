@@ -82,10 +82,14 @@ def sample_anchors(
     logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
     x_samples: np.ndarray = sample_cnvm(x_anchor, num_samples_per_anchor, lag_time, dynamic)
 
-    np.savez_compressed(f"{save_path}x_data",
-                        x_anchor=x_anchor.astype(network_datatype),
-                        x_samples=x_samples.astype(network_datatype))
+    x_anchor = x_anchor.astype(network_datatype)
+    x_samples = x_samples.astype(network_datatype)
+
     # x_anchor has to be recasted since integrating the anchor points changes the datatype to float64
+    np.savez_compressed(f"{save_path}x_data",
+                        x_anchor=x_anchor,
+                        x_samples=x_samples)
+
 
     return x_anchor, x_samples
 
