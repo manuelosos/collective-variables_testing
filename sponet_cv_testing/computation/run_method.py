@@ -85,10 +85,10 @@ def sample_anchors(
     return x_anchor, x_samples
 
 
-# TODO mit typing die Typbezeichnungen verbessern
 def approximate_tm(
         dynamic: CNVMParameters | CNTMParameters,
-        samples: np.ndarray, save_path: str
+        samples: np.ndarray,
+        save_path: str
 ) -> tuple[float, float, np.ndarray]:
 
     sigma = (dynamic.num_agents / 2) ** 0.5
@@ -106,7 +106,8 @@ def approximate_tm(
 
     np.save(f"{save_path}eigenvalues", eigenvalues)
     np.save(f"{save_path}transition_manifold", xi)
-    logger.info("Saved diffusion maps and eigenvalues.")
+    logger.info("Diffusion maps and eigenvalues saved.")
+
     return bandwidth, dimension_estimate, xi
 
 

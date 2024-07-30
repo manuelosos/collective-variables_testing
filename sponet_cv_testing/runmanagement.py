@@ -7,7 +7,7 @@ import sys
 import datetime
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
-import workdir
+import sponet_cv_testing.workdir as wd
 
 import sponet_cv_testing.datamanagement as dm
 
@@ -132,14 +132,14 @@ def run_queue(
         logger.info(f"Started run_id: {run_id}")
         start_time = time.time()
 
-        work_path: str = workdir.create_work_dir(save_path, run_parameters)
+        work_path: str = wd.create_work_dir(save_path, run_parameters)
 
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
 
         # TODO option zum überschreiben von schon existierenden runs einfügen.
 
-        workdir.write_misc_data(work_path, misc_data)
+        wd.write_misc_data(work_path, misc_data)
 
         try:
             compute_run(network, run_parameters, work_path)
