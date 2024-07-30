@@ -21,6 +21,7 @@ class TransitionManifold:
         self.eigenvectors = None
         self.distance_matrix = None
         self.dimension_estimate = None
+        self.distance_matrix_triangle_speedup = True
 
     def fit(self, x_samples: np.ndarray, optimize_bandwidth: bool = False):
         """
@@ -48,9 +49,16 @@ class TransitionManifold:
         return self.calc_diffusion_map()
 
     def set_distance_matrix(self, x_samples: np.ndarray):
-        self.distance_matrix, _ = _numba_dist_matrix_gaussian_kernel(
-            x_samples, self.bandwidth_transitions
-        )
+
+        if self.distance_matrix_triangle_speedup:
+            logger.debug("Triangle Inequality speedup enabled")
+            self.distance_matrix, _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(
+                x_samples, self.bandwidth_transitions
+            )
+        else:
+            self.distance_matrix, _ = _numba_dist_matrix_gaussian_kernel(
+                x_samples, self.bandwidth_transitions
+            )
 
     def optimize_bandwidth_diffusion_maps(self):
         """
@@ -154,6 +162,83 @@ def _numba_dist_matrix_gaussian_kernel(
                 kernel_diagonal[i] + kernel_diagonal[j] - 2 * this_sum
             )
     distance_matrix /= num_samples**2
+    return distance_matrix + np.transpose(distance_matrix), kernel_diagonal
+
+
+#@njit(parallel=False)
+def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
+        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=10e-6
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+        Parameters
+        ----------
+        x_samples : np.ndarray
+            Shape = (num_anchor_points, num_samples, dimension).
+        sigma : float
+            Bandwidth.
+        triangle_speedup_tolerance : float
+            Tolerance for relative difference between lower and upper triangle inequality bound for applying the
+            speedup.
+            Defaults to 10e-4.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            1) Distance matrix, shape = (num_anchor_points, num_anchor_points).
+            2) kernel matrix diagonal, shape = (num_anchor_points,)
+        """
+
+    num_anchor, num_samples, dimension = x_samples.shape
+
+    # compute symmetric kernel evaluations
+    kernel_diagonal = np.zeros(num_anchor)
+    for i in range(num_anchor):
+        kernel_diagonal[i] = _numba_gaussian_kernel_eval(
+            x_samples[i], x_samples[i], sigma
+        )
+
+    # compute asymmetric kernel evaluations and assemble distance matrix
+
+    n_speedup = 0
+
+    distance_matrix = np.zeros((num_anchor, num_anchor))
+    for i in range(num_anchor):
+        for j in range(i):
+
+            # Check if triangle inequality speedup can be applied
+            lower_max = -np.inf
+            upper_min = np.inf
+            for k in range(j):
+                lower_triang_bound = np.abs(distance_matrix[i, k] - distance_matrix[j, k])
+                upper_triang_bound = distance_matrix[i, k] + distance_matrix[j, k]
+
+                if lower_triang_bound > lower_max:
+                    lower_max = lower_triang_bound
+                if upper_triang_bound < upper_min:
+                    upper_min = upper_triang_bound
+
+            # If difference is within tolerance
+            if (upper_min - lower_max)/lower_max < triangle_speedup_tolerance:
+                distance_matrix[i, j] = 0.5 * (lower_max + upper_min)
+                n_speedup = n_speedup + 1
+                continue
+
+            this_sum = _numba_gaussian_kernel_eval(x_samples[i], x_samples[j], sigma)
+            distance_matrix[i, j] = (
+                kernel_diagonal[i] + kernel_diagonal[j] - 2 * this_sum
+            )
+
+    distance_matrix /= num_samples ** 2
+    logger.debug(f"Distance Matrix computed. Total number triangle speedups: {n_speedup}")
+
+    no_speedup = num_anchor**2 * num_samples**2 * dimension
+    speedup = (num_anchor**2 - n_speedup) *num_samples**2*dimension*num_anchor + n_speedup*num_anchor
+    if no_speedup > speedup:
+        logger.debug(f"speedup was sucesfull ")
+
+    logger.debug(f"Difference {no_speedup-speedup}")
+
+
     return distance_matrix + np.transpose(distance_matrix), kernel_diagonal
 
 
