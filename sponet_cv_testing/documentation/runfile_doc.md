@@ -1,19 +1,27 @@
 
 ### Runfile Documentation
-The testpipeline uses json-files as input. 
+The testpipeline uses json files as input. 
 Each file specifies the parameters of one testrun.
-In this document, the specifications of these files is documented.
-The json files have a Python dictionary like structure with nested dictionaries. 
+This document describes the structure of the files. 
+Parameters all have unique names which will be referred to as "keys".
+Parameters are bundled in nested dictionaries.
+All keys are strings.
+The datatype of the parameter is specified after the key.
+Key and datatype are separated by a `:`.
+Some keys are conditional.
+Conditional keys must be specified when certain conditions are met.
+These conditions will be noted in round brackets after the key specification.
+If no condition is specified the value must always be present.
+Optional values will be denoted with an "optional" in round brackets.
+If optional values are not specified in the runfile, default values which are described here will be used.
 
-All "keys" are strings. The corresponding value is specified after the key. 
-If a value has to be present only when certain conditions are met, 
-there will round brackets after the datatype in which the conditions are specified.
+All parameters are independent of the individual machine that is used for computation.
 
 For example:
 `value: datatype (other_value=state)`, 
 here value must be specified in the runfile if other_value is set to state.
-Otherwise, it can be omitted. 
-If no condition is specified the value must always be present.
+Otherwise, it can be omitted.
+
 If "other value" is also conditional, the corresponding condition will not be specified again in "value".
 
 The first layer of the file consists of
@@ -65,6 +73,9 @@ The simulation dict has the following attributes
     * Currently only "local_cluster" is supported
   * **lag_time**: float
     * Specifies the timescale of the collective variable
+  * **short_integration_time**: float (optional)
+    * If no short integration time is specified,
+    the short integration time will be chosen with respect to the maximum rates and the overall lag time.
   * **num_anchor_points**: integer
     * Number of different anchorpoints that are sampled
   * **num_samples_per_anchor**: int

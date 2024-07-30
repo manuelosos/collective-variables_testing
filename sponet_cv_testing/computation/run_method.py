@@ -29,15 +29,14 @@ def setup_dynamic(dynamic_parameters: dict, network: nx.Graph) -> CNVMParameters
         if isinstance(rates[key], Iterable):
             rates[key] = np.array(rates[key])
 
-    #TODO Make type determination case insensitive
-    if model == "CNVM":
+    if model.lower() == "cnvm":
         params = CNVMParameters(
             num_opinions=num_states,
             num_agents=network.number_of_nodes(),
             network=network,
             **rates
         )
-    elif model == "CNTM":
+    elif model.lower() == "cntm":
         params = CNTMParameters(
             network=network,
             **rates
@@ -65,14 +64,18 @@ def sample_anchors(
         dynamic.network, dynamic.num_opinions, num_anchor_points, 5
     )
 
-    # Set short_integration_time dependent on maximal rate
-    max_rate = max(np.max(dynamic.r), np.max(dynamic.r_tilde))
+    if "short_integration_time" in sampling_parameters.keys():
+        short_integration_time = sampling_parameters["short_integration_time"]
+    else:
+        # Set short_integration_time dependent on maximal rate
+        max_rate = max(np.max(dynamic.r), np.max(dynamic.r_tilde))
+        short_integration_time: float = lag_time/10/max_rate
 
-    short_integration_time: float = lag_time/10/max_rate
-    logger.debug(f"Starting short integration lag_time {short_integration_time}")
-    x_anchor = integrate_anchor_points(
-        x_anchor, dynamic, short_integration_time
-    )  # integrate shortly to get rid of unstable states
+    if short_integration_time != 0:
+        logger.debug(f"Starting short integration lag_time {short_integration_time}")
+        x_anchor = integrate_anchor_points(
+            x_anchor, dynamic, short_integration_time
+        )  # integrate shortly to get rid of unstable states
 
     logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
     x_samples: np.ndarray = sample_cnvm(x_anchor, num_samples_per_anchor, lag_time, dynamic)

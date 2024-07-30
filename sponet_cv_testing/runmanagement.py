@@ -7,22 +7,25 @@ import sys
 import datetime
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
+import workdir
 
 import sponet_cv_testing.datamanagement as dm
 
-logger = logging.getLogger("cv_testing.runmanagement")
+logger = logging.getLogger("testpipeline.runmanagement")
 
 
 def get_runfiles(path: str) -> list[dict]:
     """
-    Reads the json file that are specified by path. If path points to a directory, all json files in this dir will be
-    read. Path can also point to a single json file. In this case a list containing the single specified file is returned.
+    Reads the json file(s) in path.
+    If path points to a directory, all json files in this dir will be read.
+    Path can also point to a single json file.
+    In this case a list containing the single specified file is returned.
 
     Parameters
 
     path (str) :
         Path to the folder containing the json file or to a single json file itself.
-        If a whole directory is specified the path must end with "/"
+        If a directory is specified the path must end with "/".
         Example: the json files are in the directory "test_files" then "[..]/test_files/" must be passed as path.
 
     Returns  (list[dict])
@@ -40,29 +43,11 @@ def get_runfiles(path: str) -> list[dict]:
     elif path.endswith(".json"):
         with open(path, "r") as target_file:
             run_parameters = [json.load(target_file)]
+
     else:
         raise FileNotFoundError(f"Path {path} is not valid!")
+
     return run_parameters
-
-
-def create_work_dir(path: str, run_parameters: dict) -> str:
-    """Creates a dir in the specified location and saves the parameter file in it.
-
-    Parameters:
-    path (str): The path in which the folder will be created.
-    run_parameters (dict) : Dictionary of parameters for the test.
-
-    Returns (str)
-    Path to the created folder
-    """
-    run_id: str = run_parameters["run_id"]
-    run_folder_path: str = f"{path}/{run_id}/"
-    os.mkdir(run_folder_path)
-
-    with open(f"{run_folder_path}parameters.json", "w") as target_file:
-        json.dump(run_parameters, target_file, indent=3)
-
-    return run_folder_path
 
 
 def generate_network(network_parameters: dict, save_path: str, filename: str="network") -> nx.Graph:
@@ -89,6 +74,7 @@ def generate_network(network_parameters: dict, save_path: str, filename: str="ne
     return network
 
 
+#TODO Workflow von schon bestehenden Netwerken überarbeiten
 def setup_network(network_parameters: dict, work_path: str, archive_path: str) -> nx.Graph:
     generate_new: bool = network_parameters["generate_new"]
 
@@ -104,9 +90,12 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
 
 
 def run_queue(
-        run_files: list[dict], save_path: str, archive_path: str,
+        run_files: list[dict],
+        save_path: str,
+        archive_path: str,
         exit_after_error: bool = False,
-        misc_data: dict=None) -> None:
+        misc_data: dict=None
+) -> None:
     """
     Runs the tests specified in the runfiles. The results will be saved in save_path.
 
@@ -138,18 +127,19 @@ def run_queue(
     logger.info(f"Started {len(run_files)} runs.")
 
     for run_parameters in run_files:
-        run_id: str = run_parameters["run_id"]
-        logger.info(f"Started run_id: {run_id} by")
 
+        run_id: str = run_parameters["run_id"]
+        logger.info(f"Started run_id: {run_id}")
         start_time = time.time()
 
-        work_path: str = create_work_dir(save_path, run_parameters)
+        work_path: str = workdir.create_work_dir(save_path, run_parameters)
 
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
-        dm.write_misc_data(work_path, misc_data)
-        now = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M")
-        dm.write_misc_data(work_path, {"run_started": now})
+
+        # TODO option zum überschreiben von schon existierenden runs einfügen.
+
+        workdir.write_misc_data(work_path, misc_data)
 
         try:
             compute_run(network, run_parameters, work_path)

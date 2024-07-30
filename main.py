@@ -6,13 +6,14 @@ import json
 
 from sponet_cv_testing.runmanagement import get_runfiles, run_queue
 
-logger = logging.getLogger("cv_testing")
+logger = logging.getLogger("testpipeline")
 logger.setLevel(logging.DEBUG)
 
-# Handler that logs all messages to a text log
+# Handler that logs ALL messages to a text log
 complete_file_handler = logging.FileHandler("complete_log.log")
 complete_file_handler.setLevel(logging.DEBUG)
 
+# Handler that sends progress-relevant messages to the console
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 
@@ -52,6 +53,8 @@ def main() -> None:
     """
     logging.info("Started main.py")
     args = sys.argv[1:]
+
+    # TODO misc Data sachen überarbeiten es sollte eine bessere art geben das zu machen
 
     queue_path: str = args[0]
     work_dir_path: str = args[1]
