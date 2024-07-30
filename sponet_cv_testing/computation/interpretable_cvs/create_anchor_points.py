@@ -144,8 +144,15 @@ def create_anchor_points_local_clusters(
     -------
     np.ndarray
     """
+
+    if num_opinions <= 256:
+        network_data_type = np.uint8
+    else:
+        network_data_type = np.uint16
+
     num_agents = network.number_of_nodes()
-    x_anchor = np.zeros((num_anchor_points, num_agents))
+    x_anchor = np.zeros((num_anchor_points, num_agents), dtype=network_data_type)
+
     alpha = np.ones(num_opinions)
 
     for i in range(num_anchor_points):
@@ -212,7 +219,7 @@ def create_anchor_points_local_clusters(
 
         x_anchor[i] = x
 
-    x_anchor = np.unique(x_anchor.astype(int), axis=0)
+    x_anchor = np.unique(x_anchor.astype(network_data_type), axis=0)
 
     while x_anchor.shape[0] != num_anchor_points:
         missing_points = num_anchor_points - x_anchor.shape[0]
@@ -224,13 +231,15 @@ def create_anchor_points_local_clusters(
                 ),
             ]
         )
-        x_anchor = np.unique(x_anchor.astype(int), axis=0)
+        x_anchor = np.unique(x_anchor.astype(network_data_type), axis=0)
 
     return x_anchor
 
 
 def integrate_anchor_points(
-    x_anchor: np.ndarray, params: Parameters, tau: float
+    x_anchor: np.ndarray,
+        params: Parameters,
+        tau: float
 ) -> np.ndarray:
     _, x = sample_many_runs(params, x_anchor, tau, 2, 1, n_jobs=-1)
     return x[:, 0, -1, :]
