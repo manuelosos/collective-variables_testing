@@ -4,7 +4,7 @@ import scipy.sparse.linalg as sla
 from numba import njit, prange
 from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
 
-logger = logging.getLogger("cv_testing.compute.transition_manifold")
+logger = logging.getLogger("testpipeline.compute.transition_manifold")
 
 
 class TransitionManifold:
@@ -167,7 +167,7 @@ def _numba_dist_matrix_gaussian_kernel(
 
 #@njit(parallel=False)
 def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
-        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=10e-6
+        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=10e-4
 ) -> tuple[np.ndarray, np.ndarray]:
     """
         Parameters
@@ -187,7 +187,7 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
             1) Distance matrix, shape = (num_anchor_points, num_anchor_points).
             2) kernel matrix diagonal, shape = (num_anchor_points,)
         """
-
+    logger.info(f"Computing distance matrix with triangle speedup. Rel error tolerance: {triangle_speedup_tolerance}")
     num_anchor, num_samples, dimension = x_samples.shape
 
     # compute symmetric kernel evaluations
@@ -229,12 +229,12 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
             )
 
     distance_matrix /= num_samples ** 2
-    logger.debug(f"Distance Matrix computed. Total number triangle speedups: {n_speedup}")
+    logger.info(f"Distance Matrix computed. Total number triangle speedups: {n_speedup}")
 
     no_speedup = num_anchor**2 * num_samples**2 * dimension
     speedup = (num_anchor**2 - n_speedup) *num_samples**2*dimension*num_anchor + n_speedup*num_anchor
     if no_speedup > speedup:
-        logger.debug(f"speedup was successful ")
+        logger.debug(f"speedup was successful")
 
     logger.debug(f"Difference {no_speedup-speedup}")
 
