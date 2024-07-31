@@ -17,10 +17,23 @@ def compute_run(network, parameters: dict, work_path: str):
         dynamic_parameters: dict = parameters["dynamic"]
         dynamic = setup_dynamic(dynamic_parameters, network)
 
+        if dynamic.num_opinions <= 256:
+            state_type = np.uint8
+        elif dynamic.num_opinions <= 65535:
+            state_type = np.uint16
+        else:
+            state_type = np.uint32
+
         simulation_parameters: dict = parameters["simulation"]
 
         sampling_parameters: dict = simulation_parameters["sampling"]
-        anchors, samples = sample_anchors(dynamic, sampling_parameters, work_path)
+        anchors = create_anchor_points(dynamic, sampling_parameters).astype(state_type)
+
+        samples = sample_anchors(dynamic, sampling_parameters, anchors)
+
+        np.savez_compressed(f"{work_path}x_data",
+                            x_anchor=anchors,
+                            x_samples=samples)
 
         diffusion_bandwidth, dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
 

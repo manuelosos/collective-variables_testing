@@ -21,7 +21,7 @@ def create_work_dir(path: str, run_parameters: dict) -> str:
         json.dump(run_parameters, target_file, indent=3)
 
         now = datetime.datetime.now().strftime("%Y_%m_%d_%H:%M")
-        write_misc_data(path, {"run_started": now})
+        write_misc_data(f"{path}/{run_id}/", {"run_started": now})
 
     return run_folder_path
 
