@@ -21,9 +21,9 @@ class TransitionManifold:
         self.eigenvectors = None
         self.distance_matrix = None
         self.dimension_estimate = None
-        self.distance_matrix_triangle_speedup = True
+        self.distance_matrix_triangle_speedup = False
 
-    def fit(self, x_samples: np.ndarray, optimize_bandwidth: bool = False):
+    def fit(self, x_samples: np.ndarray, optimize_bandwidth: bool = False, triangle_speedup: bool = False):
         """
         Parameters
         ----------
@@ -33,12 +33,14 @@ class TransitionManifold:
         optimize_bandwidth : bool, optional
             If true, the diffusion_bandwidth is optimized.
             This also yields an estimation of the transition manifold dimension, self.dimension_estimate.
+        triangle_speedup : bool, optional
         Returns
         -------
         np.ndarray
             Array containing the coordinates of each anchor point in diffusion space.
             Shape = (num_anchor_points, dimension).
         """
+        self.distance_matrix_triangle_speedup = triangle_speedup
         logger.debug(f"Generating distance matrix")
         self.set_distance_matrix(x_samples)
         if optimize_bandwidth:
@@ -46,7 +48,9 @@ class TransitionManifold:
             self.optimize_bandwidth_diffusion_maps()
 
         logger.debug("Calculating diffusion maps")
-        return self.calc_diffusion_map()
+        diffusion_map = self.calc_diffusion_map()
+
+        return diffusion_map
 
     def set_distance_matrix(self, x_samples: np.ndarray):
 

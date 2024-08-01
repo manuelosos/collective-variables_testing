@@ -84,10 +84,12 @@ def sample_anchors(
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     lag_time: float = sampling_parameters["lag_time"]
-    num_timesteps: int = sampling_parameters.get("num_timesteps", 2)
+    num_timesteps: int = sampling_parameters.get("num_timesteps", 1)
+    if num_timesteps < 1:
+        num_timesteps = 1
 
     logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
-    t, x_samples = sample_many_runs(dynamic, x_anchor, lag_time, num_timesteps, num_samples_per_anchor)
+    t, x_samples = sample_many_runs(dynamic, x_anchor, lag_time, num_timesteps+1, num_samples_per_anchor)
     x_samples = x_samples[:, :, 2:, :]
 
     return x_samples
@@ -95,27 +97,27 @@ def sample_anchors(
 
 def approximate_tm(
         dynamic: CNVMParameters | CNTMParameters,
-        samples: np.ndarray,
-        save_path: str
-) -> tuple[float, float, np.ndarray]:
+        simulation_parameters: dict,
+        samples: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, float, float]:
+
     sigma = (dynamic.num_agents / 2) ** 0.5
-    d = 10
-    #TODO Das dim Problem lösen
+    d = simulation_parameters["num_coordinates"]
 
     trans_manifold = TransitionManifold(sigma, 0.1, d)
+    triangle_speedup = simulation_parameters.get("triangle_speedup", False)
 
     logger.info(f"Approximating transition manifold with dimension={d}")
-    xi = trans_manifold.fit(samples, optimize_bandwidth=True)
+
+    #TODO an mehrere Timesteps anpassen
+
+    xi = trans_manifold.fit(samples, optimize_bandwidth=True, triangle_speedup=triangle_speedup)
 
     bandwidth = trans_manifold.bandwidth_diffusion_map
     dimension_estimate = trans_manifold.dimension_estimate
     eigenvalues = trans_manifold.eigenvalues
 
-    np.save(f"{save_path}eigenvalues", eigenvalues)
-    np.save(f"{save_path}transition_manifold", xi)
-    logger.info("Diffusion maps and eigenvalues saved.")
-
-    return bandwidth, dimension_estimate, xi
+    return xi, eigenvalues, bandwidth, dimension_estimate
 
 
 def linear_regression(

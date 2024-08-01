@@ -86,7 +86,8 @@ The simulation dict has the following attributes
     * Number of Monte-Carlo samples per anchor
 * **num_coordinates**: integer
   * specifies the number of coordinates of the collective variable that will be saved.
-  
+* **triangle speedup**: bool
+  * If set to true the distance matrix will be computed lazily by exploiting the triangle inequality.
 Example:
 ```json
 {
