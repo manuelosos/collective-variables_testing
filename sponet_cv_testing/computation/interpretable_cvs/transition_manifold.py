@@ -41,8 +41,10 @@ class TransitionManifold:
             Shape = (num_anchor_points, dimension).
         """
         self.distance_matrix_triangle_speedup = triangle_speedup
-        logger.debug(f"Generating distance matrix")
-        self.set_distance_matrix(x_samples)
+
+        if self.distance_matrix is None:
+            logger.debug(f"Generating distance matrix")
+            self.set_distance_matrix(x_samples)
         if optimize_bandwidth:
             logger.debug("Optimizing bandwidth of diffusion map")
             self.optimize_bandwidth_diffusion_maps()
@@ -169,7 +171,7 @@ def _numba_dist_matrix_gaussian_kernel(
     return distance_matrix + np.transpose(distance_matrix), kernel_diagonal
 
 
-#@njit(parallel=False)
+@njit(parallel=False)
 def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
         x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=10e-4
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -233,16 +235,6 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
             )
 
     distance_matrix /= num_samples ** 2
-    logger.info(f"Distance Matrix computed. Total number triangle speedups: {n_speedup}")
-
-    no_speedup = num_anchor**2 * num_samples**2 * dimension
-    speedup = (num_anchor**2 - n_speedup) *num_samples**2*dimension*num_anchor + n_speedup*num_anchor
-    if no_speedup > speedup:
-        logger.debug(f"speedup was successful")
-
-    logger.debug(f"Difference {no_speedup-speedup}")
-
-
     return distance_matrix + np.transpose(distance_matrix), kernel_diagonal
 
 

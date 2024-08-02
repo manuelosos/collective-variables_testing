@@ -52,7 +52,6 @@ def create_anchor_points(
         sampling_parameters: dict
 ):
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
-    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     lag_time: float = sampling_parameters["lag_time"]
     if "short_integration_time" in sampling_parameters.keys():
         short_integration_time = sampling_parameters["short_integration_time"]
@@ -79,18 +78,19 @@ def create_anchor_points(
 def sample_anchors(
         dynamic: CNVMParameters | CNTMParameters,
         sampling_parameters: dict,
+        simulation_parameters: dict,
         x_anchor: np.ndarray
 ):
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     lag_time: float = sampling_parameters["lag_time"]
-    num_timesteps: int = sampling_parameters.get("num_timesteps", 1)
+    num_timesteps: int = simulation_parameters.get("num_timesteps", 1)
     if num_timesteps < 1:
         num_timesteps = 1
 
     logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
     t, x_samples = sample_many_runs(dynamic, x_anchor, lag_time, num_timesteps+1, num_samples_per_anchor)
-    x_samples = x_samples[:, :, 2:, :]
+    x_samples = x_samples[:, :, 1:, :]
 
     return x_samples
 
@@ -109,8 +109,6 @@ def approximate_tm(
 
     logger.info(f"Approximating transition manifold with dimension={d}")
 
-    #TODO an mehrere Timesteps anpassen
-
     xi = trans_manifold.fit(samples, optimize_bandwidth=True, triangle_speedup=triangle_speedup)
 
     bandwidth = trans_manifold.bandwidth_diffusion_map
@@ -124,8 +122,7 @@ def linear_regression(
         parameters: dict,
         transition_manifold: np.ndarray,
         anchors: np.ndarray,
-        dynamic: CNVMParameters,
-        save_path: str
+        dynamic: CNVMParameters
 ):
     num_coordinates = parameters["num_coordinates"]
 
@@ -137,25 +134,17 @@ def linear_regression(
     logger.info(f"Starting linear regression without pre weighting\nTested penalizing values: {pen_vals}")
     alphas, colors = optimize_fused_lasso(anchors, xi, network, pen_vals, performance_threshold=0.999)
 
-    np.savez(f"{save_path}cv_optim.npz", alphas=alphas, xi_fit=colors)
-
     xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions)
-    with open(f"{save_path}cv.pkl", "wb") as file:
-        pickle.dump(xi_cv, file)
 
     # pre-weighting
     weights = np.array([d for _, d in network.degree()])
     pen_vals = np.logspace(3, -2, 6)
     logger.info(f"Starting linear regression with pre weighting\nTested penalizing values: {pen_vals}")
 
-    alphas, colors = optimize_fused_lasso(
+    alphas_weighted, colors_weighted = optimize_fused_lasso(
         anchors, xi, network, pen_vals, weights=weights, performance_threshold=0.999
     )
 
-    np.savez(f"{save_path}cv_optim_degree_weighted.npz", alphas=alphas, xi_fit=colors)
+    xi_cv_weighted = build_cv_from_alpha(alphas, dynamic.num_opinions, weights=weights)
 
-    xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions, weights=weights)
-    with open(f"{save_path}cv_degree_weighted.pkl", "wb") as file:
-        pickle.dump(xi_cv, file)
-
-    return
+    return alphas, colors, xi_cv, alphas_weighted, colors_weighted, xi_cv_weighted
