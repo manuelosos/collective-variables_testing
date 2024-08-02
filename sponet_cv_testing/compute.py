@@ -37,25 +37,13 @@ def compute_run(network, parameters: dict, work_path: str):
                             x_anchor=anchors,
                             x_samples=samples)
 
-        num_timesteps = simulation_parameters.get("num_timesteps", 1)
+        num_nodes = dynamic.num_agents
+        num_coordinates = parameters["simulation"]["num_coordinates"]
+        triangle_speedup = parameters["simulation"]["triangle_speedup"]
+        diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
+            approximate_tm(samples, num_nodes, num_coordinates, triangle_speedup))
 
         if num_timesteps <= 1:
-            xi, eigenvalues, diffusion_bandwidth, dim_estimate = (
-                approximate_tm(dynamic, simulation_parameters, samples[:, :, 0, :]))
-
-            wd.write_misc_data(work_path, {"diffusion_bandwidth": diffusion_bandwidth,
-                                           "dimension_estimate": dim_estimate})
-
-        elif simulation_parameters.get("triangle_speedup", False):
-            # if no triangle speedup is enabled the transition manifolds will be computed in sequence
-            _sequential_transition_manifolds(dynamic, simulation_parameters, samples)
-        else:
-
-            pass
-
-        if num_timesteps <= 1:
-
-
 
             alphas, colors, xi_cv, alphas_weighted, colors_weighted, xi_cv_weighted = (
                 linear_regression(simulation_parameters, xi, anchors, dynamic))

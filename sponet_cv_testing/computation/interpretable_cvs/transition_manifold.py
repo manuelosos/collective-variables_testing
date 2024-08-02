@@ -7,6 +7,71 @@ from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
 logger = logging.getLogger("testpipeline.compute.transition_manifold")
 
 
+def compute_transition_manifolds(samples: np.ndarray,
+                                 bandwidth_transitions: float,
+                                 num_coordinates: int,
+                                 distance_matrix_triangle_inequality_speedup: bool = False,
+                                 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
+    num_anchorpoints: int = samples.shape[0]
+    num_timesteps = samples.shape[2]
+
+    diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
+    diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates + 1))
+    dimension_estimates = np.empty(num_timesteps)
+    bandwidth_diffusion_maps = np.empty(num_timesteps)
+
+    distance_matrices = _parallel_compute_distance_matrices(samples,
+                                                            bandwidth_transitions,
+                                                            distance_matrix_triangle_inequality_speedup)
+
+    for i in range(num_timesteps):
+        bandwidth_diffusion_maps[i], dimension_estimates[i], *_ = (
+            optimize_bandwidth_diffusion_map(distance_matrices[i, :, :]))
+        try:
+            eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrices[i, :, :],
+                                                            num_coordinates,
+                                                            bandwidth_diffusion_maps[i])
+        except (ArpackError, ArpackNoConvergence) as e:
+            logger.debug("Arpackerror occurred. Checking if bandwidth is below threshold")
+
+            bandwidth_tolerance: float = np.max(distance_matrices[i, :, :]) / np.sqrt(20)
+            if bandwidth_diffusion_maps[i] < bandwidth_tolerance:
+                logger.debug(
+                    f"#slb Sigma {bandwidth_diffusion_maps[i]} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
+                    f"Set sigma to {bandwidth_tolerance}")
+                eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrices[i, :, :], num_coordinates, bandwidth_tolerance)
+
+            else:
+                logger.error(f"Bandwidth not below threshold {bandwidth_tolerance}")
+                raise e
+
+        diffusion_maps_eigenvalues[i, :] = eigenvalues
+        diffusion_maps[i, :, :] = eigenvectors.real[:, 1:] * eigenvalues.real[np.newaxis, 1:]
+
+    return diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps
+
+
+@njit(parallel=True)
+def _parallel_compute_distance_matrices(
+        samples: np.ndarray, bandwidth_transition: float, triangle_speedup: bool
+) -> np.ndarray:
+    num_timesteps = samples.shape[2]
+    num_anchorpoints: int = samples.shape[0]
+
+    distance_matrices = np.empty((num_timesteps, num_anchorpoints, num_anchorpoints))
+
+    if triangle_speedup:
+        for i in prange(num_timesteps):
+            distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples[:, :, i, :],
+                                                                                                bandwidth_transition)
+    else:
+        for i in prange(num_timesteps):
+            distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel(samples[:, :, i, :],
+                                                                               bandwidth_transition)
+    return distance_matrices
+
+
 def compute_transition_manifold(samples: np.ndarray,
                                 bandwidth_transitions: float,
                                 num_coordinates: int,
@@ -14,7 +79,6 @@ def compute_transition_manifold(samples: np.ndarray,
                                 optimize_diffusion_map_bandwidth: bool = True,
                                 bandwidth_diffusion_map: float | None = None
                                 ) -> tuple[np.ndarray, np.ndarray, float | None, float]:
-
     if distance_matrix_triangle_inequality_speedup:
         distance_matrix, _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples, bandwidth_transitions)
     else:
@@ -47,7 +111,6 @@ def compute_transition_manifold(samples: np.ndarray,
 
 
 def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray):
-
     epsilons = np.logspace(-6, 2, 101)
     s = []
     for epsilon in epsilons:

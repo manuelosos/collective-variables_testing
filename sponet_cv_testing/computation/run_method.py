@@ -11,7 +11,8 @@ from numba import njit, prange
 from sponet_cv_testing.computation.interpretable_cvs import (
     optimize_fused_lasso,
     build_cv_from_alpha,
-    compute_transition_manifold
+    compute_transition_manifold,
+    compute_transition_manifolds
 )
 
 logger = logging.getLogger("testpipeline.compute")
@@ -95,46 +96,26 @@ def sample_anchors(
 
     return x_samples
 
-#@njit(parallel=True)
+
 def approximate_tm(
         samples: np.ndarray,
         num_nodes: int,
         num_coordinates: int,
-        triangle_speedup: bool,
-        simulation_parameters: dict,
-
+        triangle_speedup: bool
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-
-    num_timesteps = samples.shape[2]
-    num_anchorpoints: int = samples.shape[0]
 
     sigma = (num_nodes / 2) ** 0.5
 
-    if triangle_speedup:
-
-        diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
-        diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates))
-        dimension_estimates = np.empty(num_timesteps)
-        bandwidth_diffusion_maps = np.empty(num_timesteps)
-
-        for i in range(num_timesteps):
-            (diffusion_maps[i, :, :], diffusion_maps_eigenvalues[i, :],
-             bandwidth_diffusion_maps[i], dimension_estimates[i]) = (
-                compute_transition_manifold(samples[:, :, i, :],
-                                            sigma,
-                                            num_coordinates,
-                                            distance_matrix_triangle_inequality_speedup=triangle_speedup))
-
-        logger.info(f"Approximating transition manifold with dimension={num_coordinates}")
-
-    else:
-        diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps = (
-            _parallel_transition_manifold_triangle_inequality(samples, sigma, num_coordinates))
+    diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps = (
+        compute_transition_manifolds(samples,
+                                     sigma,
+                                     num_coordinates,
+                                     distance_matrix_triangle_inequality_speedup=triangle_speedup))
 
     return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates
 
 
-@njit(parallel=True)
+@njit(parallel=True, nopython=False)
 def _parallel_transition_manifold_triangle_inequality(samples: np.ndarray, sigma: float, num_coordinates: int):
 
     num_anchorpoints = samples.shape[0]
