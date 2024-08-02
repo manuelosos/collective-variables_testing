@@ -51,7 +51,7 @@ def compute_run(network, parameters: dict, work_path: str):
             _sequential_transition_manifolds(dynamic, simulation_parameters, samples)
         else:
 
-
+            pass
 
         if num_timesteps <= 1:
 
@@ -77,24 +77,8 @@ def compute_run(network, parameters: dict, work_path: str):
     return
 
 
-def _sequential_transition_manifolds(dynamic, simulation_parameters, samples):
-    num_timesteps = samples.shape[2]
-    num_anchorpoints = samples.shape[0]
-    num_coordinates = simulation_parameters["num_coordinates"]
-
-    xi = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
-    eigenvalues = np.empty((num_timesteps, num_coordinates))
-    diffusion_bandwidths = np.empty(num_timesteps)
-    dim_estimates = np.empty(num_timesteps)
-
-    for i in range(num_timesteps):
-        xi[i, :, :], eigenvalues[i, :], diffusion_bandwidths[i], dim_estimates[i] = (
-            approximate_tm(dynamic, simulation_parameters, samples[:, :, i, :]))
-
-    return
 
 
-def _parallel_trianglespeedup_transition_manifolds(dynamic, simulation_parameters, samples):
 
 
 

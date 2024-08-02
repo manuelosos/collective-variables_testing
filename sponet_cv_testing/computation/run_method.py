@@ -6,11 +6,12 @@ import numpy as np
 import sponet.states
 from sponet import CNVMParameters, CNTMParameters
 from sponet.multiprocessing import sample_many_runs
+from numba import njit, prange
 
 from sponet_cv_testing.computation.interpretable_cvs import (
-    TransitionManifold,
     optimize_fused_lasso,
     build_cv_from_alpha,
+    compute_transition_manifold
 )
 
 logger = logging.getLogger("testpipeline.compute")
@@ -94,28 +95,74 @@ def sample_anchors(
 
     return x_samples
 
-
+#@njit(parallel=True)
 def approximate_tm(
-        dynamic: CNVMParameters | CNTMParameters,
+        samples: np.ndarray,
+        num_nodes: int,
+        num_coordinates: int,
+        triangle_speedup: bool,
         simulation_parameters: dict,
-        samples: np.ndarray
-) -> tuple[np.ndarray, np.ndarray, float, float]:
 
-    sigma = (dynamic.num_agents / 2) ** 0.5
-    d = simulation_parameters["num_coordinates"]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
 
-    trans_manifold = TransitionManifold(sigma, 0.1, d)
-    triangle_speedup = simulation_parameters.get("triangle_speedup", False)
+    num_timesteps = samples.shape[2]
+    num_anchorpoints: int = samples.shape[0]
 
-    logger.info(f"Approximating transition manifold with dimension={d}")
+    sigma = (num_nodes / 2) ** 0.5
 
-    xi = trans_manifold.fit(samples, optimize_bandwidth=True, triangle_speedup=triangle_speedup)
+    if triangle_speedup:
 
-    bandwidth = trans_manifold.bandwidth_diffusion_map
-    dimension_estimate = trans_manifold.dimension_estimate
-    eigenvalues = trans_manifold.eigenvalues
+        diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
+        diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates))
+        dimension_estimates = np.empty(num_timesteps)
+        bandwidth_diffusion_maps = np.empty(num_timesteps)
 
-    return xi, eigenvalues, bandwidth, dimension_estimate
+        for i in range(num_timesteps):
+            (diffusion_maps[i, :, :], diffusion_maps_eigenvalues[i, :],
+             bandwidth_diffusion_maps[i], dimension_estimates[i]) = (
+                compute_transition_manifold(samples[:, :, i, :],
+                                            sigma,
+                                            num_coordinates,
+                                            distance_matrix_triangle_inequality_speedup=triangle_speedup))
+
+        logger.info(f"Approximating transition manifold with dimension={num_coordinates}")
+
+    else:
+        diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps = (
+            _parallel_transition_manifold_triangle_inequality(samples, sigma, num_coordinates))
+
+    return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates
+
+
+@njit(parallel=True)
+def _parallel_transition_manifold_triangle_inequality(samples: np.ndarray, sigma: float, num_coordinates: int):
+
+    num_anchorpoints = samples.shape[0]
+    num_timesteps = samples.shape[2]
+
+    diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
+    diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates))
+    bandwidth_diffusion_maps = np.empty(num_timesteps)
+    dim_estimates = np.empty(num_timesteps)
+
+    for i in prange(samples.shape[2]):
+        diffusion_maps[i, :, :], diffusion_maps_eigenvalues[i, :], bandwidth_diffusion_maps[i], dim_estimates[i] = (
+            compute_transition_manifold(samples[:, :, i, :],
+                                        sigma,
+                                        num_coordinates,
+                                        distance_matrix_triangle_inequality_speedup=True))
+    return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dim_estimates
+
+
+def _sequential_transition_manifolds(dynamic, simulation_parameters, samples):
+    num_timesteps = samples.shape[2]
+    num_anchorpoints = samples.shape[0]
+    num_coordinates = simulation_parameters["num_coordinates"]
+
+
+
+    return
+
 
 
 def linear_regression(

@@ -13,15 +13,16 @@ def compute_transition_manifold(samples: np.ndarray,
                                 distance_matrix_triangle_inequality_speedup: bool = False,
                                 optimize_diffusion_map_bandwidth: bool = True,
                                 bandwidth_diffusion_map: float | None = None
-                                ):
+                                ) -> tuple[np.ndarray, np.ndarray, float | None, float]:
 
     if distance_matrix_triangle_inequality_speedup:
         distance_matrix, _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples, bandwidth_transitions)
     else:
         distance_matrix, _ = _numba_dist_matrix_gaussian_kernel(samples, bandwidth_transitions)
 
+    dimension_estimate = None
     if optimize_diffusion_map_bandwidth:
-        bandwidth_diffusion_map, dimension_estimate, _, _, _ = optimize_bandwidth_diffusion_map(distance_matrix)
+        bandwidth_diffusion_map, dimension_estimate, *_ = optimize_bandwidth_diffusion_map(distance_matrix)
     assert bandwidth_diffusion_map is not None
 
     try:
@@ -34,14 +35,15 @@ def compute_transition_manifold(samples: np.ndarray,
             logger.debug(
                 f"#slb Sigma {bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
                 f"Set sigma to {bandwidth_tolerance}")
-            eigenvalues, eigenvectors = calc_diffusion_maps(
-                distance_matrix, num_coordinates, bandwidth_tolerance
-            )
+            eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrix, num_coordinates, bandwidth_tolerance)
+
         else:
-            logger.error("Bandwidth not below threshold.")
+            logger.error(f"Bandwidth not below threshold {bandwidth_tolerance}")
             raise e
 
-    return eigenvectors.real[:, 1:] * eigenvalues.real[np.newaxis, 1:]
+    diffusion_map = eigenvectors.real[:, 1:] * eigenvalues.real[np.newaxis, 1:]
+
+    return diffusion_map, eigenvalues, dimension_estimate, bandwidth_diffusion_map
 
 
 def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray):
