@@ -10,23 +10,52 @@ logger = logging.getLogger("testpipeline.compute.transition_manifold")
 def compute_transition_manifolds(samples: np.ndarray,
                                  bandwidth_transitions: float,
                                  num_coordinates: int,
-                                 distance_matrix_triangle_inequality_speedup: bool = False,
+                                 distance_matrix_triangle_inequality_speedup: bool = False
                                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Computes the transition manifold of a set of samples. Diffusion maps will be computed for every timestep.
+    The diffusion bandwidths will be optimized automatically.
+    The diffusion maps are computed using the Arpack wrapper of scipy.
+    If the eigenvalue problem does not converge and the optimized diffusion bandwidth is below a threshold depending on
+    the maximal value of the corresponding distance matrix, the diffusion bandwidth will be set to the threshold.
 
-    num_anchorpoints: int = samples.shape[0]
-    num_timesteps = samples.shape[2]
+    Parameters
+    ----------
+    samples : np.ndarray
+        Array of samples, shape = (num_initial_states, num_runs, num_time_steps, num_agents).
+    bandwidth_transitions : float
+        Bandwidth sigma of transition kernel for the distance matrices.
+    num_coordinates : int
+        Number of coordinates of the diffusion maps that will be computed.
+    distance_matrix_triangle_inequality_speedup : bool, optional
+        If set to True, the distance matrices will be computed lazily utilizing estimates from the triangle inequality.
+        This can lead to an inexact distance matrix.
+        Defaults to False.
 
-    diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
-    diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates + 1))
-    dimension_estimates = np.empty(num_timesteps)
-    bandwidth_diffusion_maps = np.empty(num_timesteps)
+    Returns
+    -------
+    diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps :
+        tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+        diffusion_maps.shape = (num_time steps, num_initial_states, num_coordinates),
+        diffusion_maps_eigenvalues.shape = (num_time_steps, num_coordinates+1),
+        dimension_estimates.shape = (num_time_steps),
+        bandwidth_diffusion_maps.shape = (num_time_steps)
+    """
+
+    num_initial_states: int = samples.shape[0]
+    num_time_steps = samples.shape[2]
+
+    diffusion_maps = np.empty((num_time_steps, num_initial_states, num_coordinates))
+    diffusion_maps_eigenvalues = np.empty((num_time_steps, num_coordinates + 1))
+    dimension_estimates = np.empty(num_time_steps)
+    bandwidth_diffusion_maps = np.empty(num_time_steps)
 
     distance_matrices = _parallel_compute_distance_matrices(samples,
                                                             bandwidth_transitions,
                                                             distance_matrix_triangle_inequality_speedup)
 
-    for i in range(num_timesteps):
-        bandwidth_diffusion_maps[i], dimension_estimates[i], *_ = (
+    for i in range(num_time_steps):
+        bandwidth_diffusion_maps[i], dimension_estimates[i] = (
             optimize_bandwidth_diffusion_map(distance_matrices[i, :, :]))
         try:
             eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrices[i, :, :],
@@ -40,7 +69,8 @@ def compute_transition_manifolds(samples: np.ndarray,
                 logger.debug(
                     f"#slb Sigma {bandwidth_diffusion_maps[i]} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
                     f"Set sigma to {bandwidth_tolerance}")
-                eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrices[i, :, :], num_coordinates, bandwidth_tolerance)
+                eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrices[i, :, :], num_coordinates,
+                                                                bandwidth_tolerance)
 
             else:
                 logger.error(f"Bandwidth not below threshold {bandwidth_tolerance}")
@@ -53,65 +83,62 @@ def compute_transition_manifolds(samples: np.ndarray,
 
 
 @njit(parallel=True)
-def _parallel_compute_distance_matrices(
-        samples: np.ndarray, bandwidth_transition: float, triangle_speedup: bool
-) -> np.ndarray:
-    num_timesteps = samples.shape[2]
-    num_anchorpoints: int = samples.shape[0]
+def _parallel_compute_distance_matrices(samples: np.ndarray,
+                                        bandwidth_transition: float,
+                                        distance_matrix_triangle_inequality_speedup: bool
+                                        ) -> np.ndarray:
+    """
+    Computes the distance matrices for a set of samples.
+    If distance_matrix_triangle_inequality_speedup is set to True, the distance matrices are computed in parallel.
+    Otherwise, each distance matrix is computed parallely.
 
-    distance_matrices = np.empty((num_timesteps, num_anchorpoints, num_anchorpoints))
+    Parameters
+    ----------
+    samples : np.ndarray
+        Array of samples, shape = (num_initial_states, num_runs, num_time_steps, num_agents).
+    bandwidth_transition : float
+        Bandwidth sigma of transition kernel for the distance matrices.
+    distance_matrix_triangle_inequality_speedup : bool
+        If set to True, the distance matrices will be computed lazily utilizing estimates from the triangle inequality.
+        This can lead to inexact results.
 
-    if triangle_speedup:
-        for i in prange(num_timesteps):
+    Returns
+    -------
+    distance_matrices : np.ndarray
+    distance_matrices.shape = (num_time_steps, num_initial_states, num_initial_states)
+    """
+
+    num_time_steps = samples.shape[2]
+    num_initial_states = samples.shape[0]
+
+    distance_matrices = np.empty((num_time_steps, num_initial_states, num_initial_states))
+
+    if distance_matrix_triangle_inequality_speedup:
+        for i in prange(num_time_steps):
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples[:, :, i, :],
                                                                                                 bandwidth_transition)
     else:
-        for i in prange(num_timesteps):
+        for i in prange(num_time_steps):
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel(samples[:, :, i, :],
                                                                                bandwidth_transition)
     return distance_matrices
 
 
-def compute_transition_manifold(samples: np.ndarray,
-                                bandwidth_transitions: float,
-                                num_coordinates: int,
-                                distance_matrix_triangle_inequality_speedup: bool = False,
-                                optimize_diffusion_map_bandwidth: bool = True,
-                                bandwidth_diffusion_map: float | None = None
-                                ) -> tuple[np.ndarray, np.ndarray, float | None, float]:
-    if distance_matrix_triangle_inequality_speedup:
-        distance_matrix, _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples, bandwidth_transitions)
-    else:
-        distance_matrix, _ = _numba_dist_matrix_gaussian_kernel(samples, bandwidth_transitions)
+def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray) -> tuple[float, float]:
+    """
+    Optimizes the diffusion bandwidth and computes an estimate for the intrinsic dimension of the sample corresponding
+    to the distance matrix.
 
-    dimension_estimate = None
-    if optimize_diffusion_map_bandwidth:
-        bandwidth_diffusion_map, dimension_estimate, *_ = optimize_bandwidth_diffusion_map(distance_matrix)
-    assert bandwidth_diffusion_map is not None
+    Parameters
+    ----------
+        distance_matrix : np.ndarray
+    Returns
+    -------
+        optim_bandwidth_diffusion_map, dimension_estimate : tuple[float, float]
 
-    try:
-        eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrix, num_coordinates, bandwidth_diffusion_map)
-    except (ArpackError, ArpackNoConvergence) as e:
-        logger.debug("Arpackerror occurred. Checking if bandwidth is below threshold")
-
-        bandwidth_tolerance: float = np.max(distance_matrix) / np.sqrt(20)
-        if bandwidth_diffusion_map < bandwidth_tolerance:
-            logger.debug(
-                f"#slb Sigma {bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
-                f"Set sigma to {bandwidth_tolerance}")
-            eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrix, num_coordinates, bandwidth_tolerance)
-
-        else:
-            logger.error(f"Bandwidth not below threshold {bandwidth_tolerance}")
-            raise e
-
-    diffusion_map = eigenvectors.real[:, 1:] * eigenvalues.real[np.newaxis, 1:]
-
-    return diffusion_map, eigenvalues, dimension_estimate, bandwidth_diffusion_map
-
-
-def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray):
+    """
     epsilons = np.logspace(-6, 2, 101)
+
     s = []
     for epsilon in epsilons:
         s.append(np.mean(np.exp(-(distance_matrix ** 2) / epsilon)))
@@ -120,12 +147,12 @@ def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray):
     derivative = _central_differences(np.log(epsilons), np.log(s))
     optim_idx = np.argmax(derivative)
     optim_epsilon = epsilons[optim_idx]
-    optim_bandwidth_diffusion_map = optim_epsilon ** 0.5
-    dimension_estimate = derivative[optim_idx]
+    optim_bandwidth_diffusion_map: float = optim_epsilon ** 0.5
+    dimension_estimate: float = derivative[optim_idx]
 
     logger.debug(f"Optimal bandwidth: {optim_bandwidth_diffusion_map}")
 
-    return optim_bandwidth_diffusion_map, dimension_estimate, epsilons, s, derivative
+    return optim_bandwidth_diffusion_map, dimension_estimate
 
 
 @njit(parallel=True)
@@ -313,6 +340,45 @@ def _central_differences(x: np.ndarray, y: np.ndarray) -> np.ndarray:
 
 
 # Deprecated
+def compute_transition_manifold(samples: np.ndarray,
+                                bandwidth_transitions: float,
+                                num_coordinates: int,
+                                distance_matrix_triangle_inequality_speedup: bool = False,
+                                optimize_diffusion_map_bandwidth: bool = True,
+                                bandwidth_diffusion_map: float | None = None
+                                ) -> tuple[np.ndarray, np.ndarray, float | None, float]:
+    if distance_matrix_triangle_inequality_speedup:
+        distance_matrix, _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples, bandwidth_transitions)
+    else:
+        distance_matrix, _ = _numba_dist_matrix_gaussian_kernel(samples, bandwidth_transitions)
+
+    dimension_estimate = None
+    if optimize_diffusion_map_bandwidth:
+        bandwidth_diffusion_map, dimension_estimate = optimize_bandwidth_diffusion_map(distance_matrix)
+    assert bandwidth_diffusion_map is not None
+
+    try:
+        eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrix, num_coordinates, bandwidth_diffusion_map)
+    except (ArpackError, ArpackNoConvergence) as e:
+        logger.debug("Arpackerror occurred. Checking if bandwidth is below threshold")
+
+        bandwidth_tolerance: float = np.max(distance_matrix) / np.sqrt(20)
+        if bandwidth_diffusion_map < bandwidth_tolerance:
+            logger.debug(
+                f"#slb Sigma {bandwidth_diffusion_map} smaller than bandwidth tolerance: {bandwidth_tolerance}. "
+                f"Set sigma to {bandwidth_tolerance}")
+            eigenvalues, eigenvectors = calc_diffusion_maps(distance_matrix, num_coordinates, bandwidth_tolerance)
+
+        else:
+            logger.error(f"Bandwidth not below threshold {bandwidth_tolerance}")
+            raise e
+
+    diffusion_map = eigenvectors.real[:, 1:] * eigenvalues.real[np.newaxis, 1:]
+
+    return diffusion_map, eigenvalues, dimension_estimate, bandwidth_diffusion_map
+
+
+# Deprecated
 class TransitionManifold:
     def __init__(
             self,
@@ -437,3 +503,6 @@ class TransitionManifold:
             raise RuntimeError("No distance matrix available. Call the set_distance_matrix method first!")
 
         return np.mean(np.exp(-(self.distance_matrix ** 2) / epsilon))
+
+
+

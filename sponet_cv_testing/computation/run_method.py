@@ -11,7 +11,6 @@ from numba import njit, prange
 from sponet_cv_testing.computation.interpretable_cvs import (
     optimize_fused_lasso,
     build_cv_from_alpha,
-    compute_transition_manifold,
     compute_transition_manifolds
 )
 
@@ -115,34 +114,8 @@ def approximate_tm(
     return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates
 
 
-@njit(parallel=True, nopython=False)
-def _parallel_transition_manifold_triangle_inequality(samples: np.ndarray, sigma: float, num_coordinates: int):
-
-    num_anchorpoints = samples.shape[0]
-    num_timesteps = samples.shape[2]
-
-    diffusion_maps = np.empty((num_timesteps, num_anchorpoints, num_coordinates))
-    diffusion_maps_eigenvalues = np.empty((num_timesteps, num_coordinates))
-    bandwidth_diffusion_maps = np.empty(num_timesteps)
-    dim_estimates = np.empty(num_timesteps)
-
-    for i in prange(samples.shape[2]):
-        diffusion_maps[i, :, :], diffusion_maps_eigenvalues[i, :], bandwidth_diffusion_maps[i], dim_estimates[i] = (
-            compute_transition_manifold(samples[:, :, i, :],
-                                        sigma,
-                                        num_coordinates,
-                                        distance_matrix_triangle_inequality_speedup=True))
-    return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dim_estimates
 
 
-def _sequential_transition_manifolds(dynamic, simulation_parameters, samples):
-    num_timesteps = samples.shape[2]
-    num_anchorpoints = samples.shape[0]
-    num_coordinates = simulation_parameters["num_coordinates"]
-
-
-
-    return
 
 
 

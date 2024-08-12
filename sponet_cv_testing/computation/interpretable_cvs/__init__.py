@@ -1,2 +1,2 @@
 from .linear_regression import optimize_fused_lasso, build_cv_from_alpha
-from .transition_manifold import compute_transition_manifold, compute_transition_manifolds
+from .transition_manifold import compute_transition_manifolds
