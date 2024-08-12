@@ -1,3 +1,5 @@
+import numpy as np
+
 from sponet_cv_testing.computation.run_method import *
 import logging
 import os
@@ -53,8 +55,8 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         os.mkdir(tm_path)
         cv_path = f"{result_path}collective_variables/"
         os.mkdir(cv_path)
-        #misc_path = f"{result_path}misc_data"
-        #os.mkdir(misc_path)
+        misc_path = f"{result_path}misc_data/"
+        os.mkdir(misc_path)
 
         if dynamic.num_opinions <= 256:
             state_type = np.uint8
@@ -82,7 +84,8 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         np.save(f"{samples_path}network_dynamics_samples", samples)
 
         logger.info(f"Computing {num_time_steps} diffusion maps.")
-        diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
+        (diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates,
+         distance_matrices_compute_times) = (
             approximate_transition_manifolds(samples,
                                              num_nodes,
                                              num_coordinates,
@@ -91,6 +94,7 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         np.save(f"{tm_path}transition_manifolds", diffusion_maps)
         np.save(f"{tm_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
         np.save(f"{tm_path}intrinsic_dimension_estimates", dimension_estimates)
+        np.savetxt(f"{misc_path}distance_matrices_compute_time", distance_matrices_compute_times, fmt="%.9g")
 
         cv_coefficients, cv_samples, cv, cv_coefficients_weighted, cv_samples_weighted, cv_weighted = (
             linear_regression(diffusion_maps,

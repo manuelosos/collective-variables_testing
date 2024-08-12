@@ -3,8 +3,24 @@ import numpy as np
 import scipy.sparse.linalg as sla
 from numba import njit, prange
 from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
+import ctypes
 
 logger = logging.getLogger("testpipeline.compute.transition_manifold")
+
+# Setup to access system time in numba compiled functions
+get_system_clock = ctypes.pythonapi._PyTime_GetSystemClock
+as_seconds_double = ctypes.pythonapi._PyTime_AsSecondsDouble
+get_system_clock.argtypes = []
+get_system_clock.restype = ctypes.c_int64
+as_seconds_double.argtypes = [ctypes.c_int64]
+as_seconds_double.restype = ctypes.c_double
+
+
+@njit(parallel=False)
+def _numba_get_time() -> float:
+    system_clock = get_system_clock()
+    current_time = as_seconds_double(system_clock)
+    return current_time
 
 
 def compute_diffusion_maps(distance_matrices: np.ndarray,
@@ -74,8 +90,8 @@ def compute_diffusion_maps(distance_matrices: np.ndarray,
 @njit(parallel=True)
 def compute_distance_matrices(samples: np.ndarray,
                               bandwidth_transition: float,
-                              distance_matrix_triangle_inequality_speedup: bool
-                              ) -> np.ndarray:
+                              distance_matrix_triangle_inequality_speedup: bool,
+                              ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
     """
     Computes the distance matrices for a set of samples.
     If distance_matrix_triangle_inequality_speedup is set to True, the distance matrices are computed in parallel.
@@ -93,24 +109,32 @@ def compute_distance_matrices(samples: np.ndarray,
 
     Returns
     -------
-    distance_matrices : np.ndarray
-    distance_matrices.shape = (num_time_steps, num_initial_states, num_initial_states)
+    distance_matrices : np.ndarray | (distance_matrices, compute_times) : tuple[np.ndarray, np.ndarray]
+        distance_matrices.shape = (num_time_steps, num_initial_states, num_initial_states)
+        compute_times.shape = num_timesteps
     """
 
     num_time_steps = samples.shape[2]
     num_initial_states = samples.shape[0]
 
     distance_matrices = np.empty((num_time_steps, num_initial_states, num_initial_states))
+    compute_times = np.empty(num_time_steps)
 
     if distance_matrix_triangle_inequality_speedup:
         for i in prange(num_time_steps):
+            start_time = _numba_get_time()
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples[:, :, i, :],
                                                                                                 bandwidth_transition)
+            compute_times[i] = _numba_get_time() - start_time
     else:
+
         for i in range(num_time_steps):
+            start_time = _numba_get_time()
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel(samples[:, :, i, :],
                                                                                bandwidth_transition)
-    return distance_matrices
+            compute_times[i] = _numba_get_time() - start_time
+
+    return distance_matrices, compute_times
 
 
 def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray) -> tuple[float, float]:

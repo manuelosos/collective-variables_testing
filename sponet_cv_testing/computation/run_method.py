@@ -96,21 +96,24 @@ def approximate_transition_manifolds(
         num_nodes: int,
         num_coordinates: int,
         distance_matrix_triangle_inequality_speedup: bool
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     num_time_steps = samples.shape[2]
     logger.debug(f"Computing {num_time_steps} distance_matrices."
                  f"with triangle speedup = {distance_matrix_triangle_inequality_speedup}.")
     bandwidth_transitions = (num_nodes / 2) ** 0.5
-    distance_matrices = compute_distance_matrices(samples,
-                                                  bandwidth_transitions,
-                                                  distance_matrix_triangle_inequality_speedup)
+    distance_matrices, distance_matrix_compute_times = (
+        compute_distance_matrices(samples,
+                                  bandwidth_transitions,
+                                  distance_matrix_triangle_inequality_speedup)
+    )
 
     logger.debug(f"Computing {num_time_steps} diffusion maps.")
     diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps = (
         compute_diffusion_maps(distance_matrices,
                                num_coordinates))
 
-    return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates
+    return (diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates,
+            distance_matrix_compute_times)
 
 
 def linear_regression(
