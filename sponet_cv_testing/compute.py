@@ -1,13 +1,11 @@
 from sponet_cv_testing.computation.run_method import *
 import logging
-import sponet_cv_testing.workdir as wd
-from sponet_cv_testing.datamanagement import write_misc_data
 
 logger = logging.getLogger("testpipeline.compute")
 
 
-def compute_run(network, parameters: dict, work_path: str):
-    runlog_handler = logging.FileHandler(f"{work_path}/runlog.log")
+def compute_run(network, parameters: dict, result_path: str) -> None:
+    runlog_handler = logging.FileHandler(f"{result_path}/runlog.log")
     runlog_handler.setLevel(logging.DEBUG)
     runlog_formatter = logging.Formatter("%(asctime)s - %(message)s")
     runlog_handler.setFormatter(runlog_formatter)
@@ -15,21 +13,70 @@ def compute_run(network, parameters: dict, work_path: str):
 
     try:
         dynamic_parameters: dict = parameters["dynamic"]
+        simulation_parameters: dict = parameters["simulation"]
+        sampling_parameters: dict = simulation_parameters["sampling"]
+
         dynamic = setup_dynamic(dynamic_parameters, network)
 
-        simulation_parameters: dict = parameters["simulation"]
+        num_nodes = dynamic.num_agents
+        num_coordinates = simulation_parameters["num_coordinates"]
+        triangle_speedup = simulation_parameters["triangle_speedup"]
+        num_opinions = dynamic_parameters["num_states"]
 
-        sampling_parameters: dict = simulation_parameters["sampling"]
-        anchors, samples = sample_anchors(dynamic, sampling_parameters, work_path)
+        # Sampling Parameters
+        lag_time = sampling_parameters["lag_time"]
+        short_integration_time = sampling_parameters.get("short_integration_time", -1)
+        num_time_steps = sampling_parameters.get("num_timesteps", 1)
+        num_anchor_points = sampling_parameters["num_anchor_points"]
+        num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
 
-        diffusion_bandwidth, dim_estimate, transition_manifold = approximate_tm(dynamic, samples, work_path)
+        if dynamic.num_opinions <= 256:
+            state_type = np.uint8
+        elif dynamic.num_opinions <= 65535:
+            state_type = np.uint16
+        else:
+            state_type = np.uint32
 
-        wd.write_misc_data(work_path,
-                           {"diffusion_bandwidth": diffusion_bandwidth,
-                            "dimension_estimate": dim_estimate})
+        anchors = create_anchor_points(dynamic,
+                                       num_anchor_points,
+                                       lag_time,
+                                       short_integration_time
+                                       ).astype(state_type)
+        np.save(f"{result_path}anchor_states", anchors)
 
-        linear_regression(simulation_parameters, transition_manifold, anchors, dynamic, work_path)
+        samples = sample_anchors(dynamic,
+                                 anchors,
+                                 lag_time,
+                                 num_time_steps,
+                                 num_samples_per_anchor
+                                 )
+        np.save(f"{result_path}samples", samples)
+
+        diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
+            approximate_tm(samples,
+                           num_nodes,
+                           num_coordinates,
+                           triangle_speedup)
+        )
+        np.save(f"{result_path}transition_manifolds", diffusion_maps)
+        np.save(f"{result_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
+        np.save(f"{result_path}intrinsic_dimension_estimates", dimension_estimates)
+
+        cv_coefficients, cv_samples, cv, cv_coefficients_weighted, cv_samples_weighted, cv_weighted = (
+            linear_regression(diffusion_maps,
+                              anchors,
+                              network,
+                              num_opinions)
+        )
+        np.save(f"{result_path}cv_coefficients", cv_coefficients)
+        np.save(f"{result_path}cv_samples", cv_samples)
+        np.save(f"{result_path}cv", cv)
+        np.save(f"{result_path}cv_coefficients_weighted", cv_coefficients)
+        np.save(f"{result_path}cv_samples_weighted", cv_samples)
+        np.save(f"{result_path}cv_weighted", cv)
+
     except Exception as e:
         logger.debug(str(e))
         raise e
+
     return

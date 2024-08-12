@@ -71,18 +71,24 @@ The simulation dict has the following attributes
   * **method**: string
     * Determines the method that is utilized for sampling.
     * Currently only "local_cluster" is supported
-  * **lag_time**: float
-    * Specifies the timescale of the collective variable
+  * **lag_time**: float 
+    * Specifies the duration of the simulation.
   * **short_integration_time**: float (optional)
-    * If no short integration time is specified,
+    * If no short integration time is specified
     the short integration time will be chosen with respect to the maximum rates and the overall lag time.
+    This is equivalent to setting the short integration time to a negative value.
+  * **num_timesteps**: int (optional)
+    * Number of with respect to time equidistant intermediate results.
+      For every intermediate result the transition matrix and diffusion maps will be computed
+      If not specified only the result at t=lag_time will be returned.
   * **num_anchor_points**: integer
     * Number of different anchorpoints that are sampled
   * **num_samples_per_anchor**: int
     * Number of Monte-Carlo samples per anchor
 * **num_coordinates**: integer
   * specifies the number of coordinates of the collective variable that will be saved.
-  
+* **triangle speedup**: bool
+  * If set to true the distance matrix will be computed lazily by exploiting the triangle inequality.
 Example:
 ```json
 {

@@ -151,6 +151,7 @@ def run_queue(
             with open(f"{work_path}ERROR.txt", "w") as file:
                 file.write(str(err))
             if exit_after_error:
+                raise(err)
                 sys.exit(1)
         else:
             end_time = time.time()
