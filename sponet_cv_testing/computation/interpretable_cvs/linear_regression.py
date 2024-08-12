@@ -137,7 +137,8 @@ def optimize_fused_lasso(
         1. optimal alpha, shape = (dim_x, dim_xi).
         2. xi_fit, shape = (num_testpoints, dim_xi).
     """
-    print("Applying linear regression...")
+
+    # print("Applying linear regression...")
     xi_data_centered = xi_data - np.mean(xi_data, axis=0)
 
     ell = xi_data.shape[0]
@@ -153,7 +154,7 @@ def optimize_fused_lasso(
     optimal_alpha = np.zeros((x.shape[1], xi_data.shape[1]))
     param_grid = {"penalty_value": pen_vals, "penalty_matrix": [inc_mat]}
     for i in range(xi_data.shape[1]):
-        print(f"Coordinate {i + 1}...")
+        #print(f"Coordinate {i + 1}...")
         model = GeneralizedLasso()
         grid_search = GridSearchCV(
             estimator=model,
@@ -174,7 +175,7 @@ def optimize_fused_lasso(
 
         model = GeneralizedLasso(penalty_value=best_pen_val, penalty_matrix=inc_mat)
         model.fit(x_data_centered, xi_data_centered[:, i])
-        print(f"best choice for regularization penalty: {best_pen_val}")
+        #print(f"best choice for regularization penalty: {best_pen_val}")
         optimal_alpha[:, i] = model.coef_
 
     xi_fit = x_data @ optimal_alpha

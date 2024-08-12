@@ -7,13 +7,12 @@ from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
 logger = logging.getLogger("testpipeline.compute.transition_manifold")
 
 
-def approximate_transition_manifolds(samples: np.ndarray,
-                                     bandwidth_transitions: float,
-                                     num_coordinates: int,
-                                     distance_matrix_triangle_inequality_speedup: bool = False
-                                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def compute_diffusion_maps(distance_matrices: np.ndarray,
+                           num_coordinates: int,
+                           ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
-    Computes the transition manifold of a set of samples. Diffusion maps will be computed for every timestep.
+    Computes the transition manifold of a series of distance_matrices.
+    Diffusion maps will be computed for every timestep.
     The diffusion bandwidths will be optimized automatically.
     The diffusion maps are computed using the Arpack wrapper of scipy.
     If the eigenvalue problem does not converge and the optimized diffusion bandwidth is below a threshold depending on
@@ -21,16 +20,10 @@ def approximate_transition_manifolds(samples: np.ndarray,
 
     Parameters
     ----------
-    samples : np.ndarray
-        Array of samples, shape = (num_initial_states, num_runs, num_time_steps, num_agents).
-    bandwidth_transitions : float
-        Bandwidth sigma of transition kernel for the distance matrices.
+    distance_matrices : np.ndarray
+        Array of distance matrices, shape = (num_time_steps, num_anchors, num_anchors).
     num_coordinates : int
         Number of coordinates of the diffusion maps that will be computed.
-    distance_matrix_triangle_inequality_speedup : bool, optional
-        If set to True, the distance matrices will be computed lazily utilizing estimates from the triangle inequality.
-        This can lead to an inexact distance matrix.
-        Defaults to False.
 
     Returns
     -------
@@ -42,17 +35,13 @@ def approximate_transition_manifolds(samples: np.ndarray,
         bandwidth_diffusion_maps.shape = (num_time_steps)
     """
 
-    num_initial_states: int = samples.shape[0]
-    num_time_steps = samples.shape[2]
+    num_time_steps = distance_matrices.shape[0]
+    num_initial_states = distance_matrices.shape[1]
 
     diffusion_maps = np.empty((num_time_steps, num_initial_states, num_coordinates))
     diffusion_maps_eigenvalues = np.empty((num_time_steps, num_coordinates + 1))
     dimension_estimates = np.empty(num_time_steps)
     bandwidth_diffusion_maps = np.empty(num_time_steps)
-
-    distance_matrices = _parallel_compute_distance_matrices(samples,
-                                                            bandwidth_transitions,
-                                                            distance_matrix_triangle_inequality_speedup)
 
     for i in range(num_time_steps):
         bandwidth_diffusion_maps[i], dimension_estimates[i] = (
@@ -83,10 +72,10 @@ def approximate_transition_manifolds(samples: np.ndarray,
 
 
 @njit(parallel=True)
-def _parallel_compute_distance_matrices(samples: np.ndarray,
-                                        bandwidth_transition: float,
-                                        distance_matrix_triangle_inequality_speedup: bool
-                                        ) -> np.ndarray:
+def compute_distance_matrices(samples: np.ndarray,
+                              bandwidth_transition: float,
+                              distance_matrix_triangle_inequality_speedup: bool
+                              ) -> np.ndarray:
     """
     Computes the distance matrices for a set of samples.
     If distance_matrix_triangle_inequality_speedup is set to True, the distance matrices are computed in parallel.

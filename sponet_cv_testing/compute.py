@@ -4,11 +4,26 @@ import logging
 logger = logging.getLogger("testpipeline.compute")
 
 
-def compute_run(network, parameters: dict, result_path: str) -> None:
+def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
+    """
+    High level function for computing a cv run. This function calls individual computation function and handles
+    parameter unpacking and result saving.
+
+    Parameters
+    ----------
+    network : nx.Graph
+    parameters : dict
+        See runfile_doc for more information.
+    result_path : str
+        Path to the directory where results will be saved.
+    Returns None
+
+    """
 
     runlog_handler = logging.FileHandler(f"{result_path}/runlog.log")
-    runlog_handler.setLevel(logging.DEBUG)
     runlog_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+    runlog_handler.setLevel(logging.DEBUG)
     runlog_handler.setFormatter(runlog_formatter)
     logger.addHandler(runlog_handler)
 
@@ -46,7 +61,7 @@ def compute_run(network, parameters: dict, result_path: str) -> None:
                                        ).astype(state_type)
         np.save(f"{result_path}anchor_states", anchors)
 
-        logger.info(f"Sampling {num_samples_per_anchor} samples on {num_anchor_points} anchors "
+        logger.info(f"Sampling {num_samples_per_anchor*num_anchor_points} samples."
                     f"with {num_time_steps} time steps.")
         samples = sample_anchors(dynamic,
                                  anchors,
@@ -56,12 +71,12 @@ def compute_run(network, parameters: dict, result_path: str) -> None:
                                  )
         np.save(f"{result_path}samples", samples)
 
-        logger.info(f"Computing {num_time_steps} diffusion maps")
+        logger.info(f"Computing {num_time_steps} diffusion maps.")
         diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
-            approximate_tm(samples,
-                           num_nodes,
-                           num_coordinates,
-                           triangle_speedup)
+            approximate_transition_manifolds(samples,
+                                             num_nodes,
+                                             num_coordinates,
+                                             triangle_speedup)
         )
         np.save(f"{result_path}transition_manifolds", diffusion_maps)
         np.save(f"{result_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
