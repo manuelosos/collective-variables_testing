@@ -11,7 +11,7 @@ from numba import njit, prange
 from sponet_cv_testing.computation.interpretable_cvs import (
     optimize_fused_lasso,
     build_cv_from_alpha,
-    compute_transition_manifolds
+    approximate_transition_manifolds
 )
 
 logger = logging.getLogger("testpipeline.compute")
@@ -50,13 +50,11 @@ def setup_dynamic(dynamic_parameters: dict, network: nx.Graph) -> CNVMParameters
 
 def create_anchor_points(
         dynamic: CNVMParameters | CNTMParameters,
-        sampling_parameters: dict
+        num_anchor_points: int,
+        lag_time: float,
+        short_integration_time: float = -1,
 ):
-    num_anchor_points: int = sampling_parameters["num_anchor_points"]
-    lag_time: float = sampling_parameters["lag_time"]
-    if "short_integration_time" in sampling_parameters.keys():
-        short_integration_time = sampling_parameters["short_integration_time"]
-    else:
+    if short_integration_time < 0:
         # Set short_integration_time dependent on maximal rate
         max_rate = max(np.max(dynamic.r), np.max(dynamic.r_tilde))
         short_integration_time: float = lag_time / 10 / max_rate
@@ -66,7 +64,7 @@ def create_anchor_points(
         dynamic.network, dynamic.num_opinions, num_anchor_points, 5
     )
 
-    if short_integration_time != 0:
+    if short_integration_time > 0:
         logger.debug(f"Starting short integration lag_time {short_integration_time}")
         _, x = sample_many_runs(
             dynamic, x_anchor, short_integration_time, 2, 1, n_jobs=-1
@@ -78,19 +76,15 @@ def create_anchor_points(
 
 def sample_anchors(
         dynamic: CNVMParameters | CNTMParameters,
-        sampling_parameters: dict,
-        simulation_parameters: dict,
-        x_anchor: np.ndarray
+        anchors: np.ndarray,
+        lag_time: float,
+        num_time_steps: int,
+        num_samples_per_anchor: int
 ):
-    num_anchor_points: int = sampling_parameters["num_anchor_points"]
-    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
-    lag_time: float = sampling_parameters["lag_time"]
-    num_timesteps: int = simulation_parameters.get("num_timesteps", 1)
-    if num_timesteps < 1:
-        num_timesteps = 1
+    if num_time_steps < 1:
+        num_time_steps = 1
 
-    logger.debug(f"Simulating voter model on {num_anchor_points} anchors")
-    t, x_samples = sample_many_runs(dynamic, x_anchor, lag_time, num_timesteps+1, num_samples_per_anchor)
+    t, x_samples = sample_many_runs(dynamic, anchors, lag_time, num_time_steps + 1, num_samples_per_anchor)
     x_samples = x_samples[:, :, 1:, :]
 
     return x_samples
@@ -102,50 +96,66 @@ def approximate_tm(
         num_coordinates: int,
         triangle_speedup: bool
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-
     sigma = (num_nodes / 2) ** 0.5
 
     diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps = (
-        compute_transition_manifolds(samples,
-                                     sigma,
-                                     num_coordinates,
-                                     distance_matrix_triangle_inequality_speedup=triangle_speedup))
+        approximate_transition_manifolds(samples,
+                                         sigma,
+                                         num_coordinates,
+                                         distance_matrix_triangle_inequality_speedup=triangle_speedup))
 
     return diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates
 
 
-
-
-
-
-
 def linear_regression(
-        parameters: dict,
-        transition_manifold: np.ndarray,
+        transition_manifold_samples: np.ndarray,
         anchors: np.ndarray,
-        dynamic: CNVMParameters
+        network: nx.Graph,
+        num_opinions: int
 ):
-    num_coordinates = parameters["num_coordinates"]
+    num_time_steps = transition_manifold_samples.shape[0]
+    num_initial_states = transition_manifold_samples.shape[1]
+    num_coordinates = transition_manifold_samples.shape[2]
+    num_agents = anchors.shape[1]
 
-    xi = transition_manifold[:, :num_coordinates]
-    network = dynamic.network
+    arr_alphas = np.empty((num_time_steps, num_agents, num_coordinates))
+    arr_colors = np.empty((num_time_steps, num_initial_states, num_coordinates))
 
-    # no pre-weighting
+    arr_alphas_weighted = np.empty_like(arr_alphas)
+    arr_colors_weighted = np.empty_like(arr_colors)
+
+    xi_cvs = []
+    xi_cvs_weighted = []
+
     pen_vals = np.logspace(3, -2, 6)
-    logger.info(f"Starting linear regression without pre weighting\nTested penalizing values: {pen_vals}")
-    alphas, colors = optimize_fused_lasso(anchors, xi, network, pen_vals, performance_threshold=0.999)
-
-    xi_cv = build_cv_from_alpha(alphas, dynamic.num_opinions)
-
-    # pre-weighting
     weights = np.array([d for _, d in network.degree()])
-    pen_vals = np.logspace(3, -2, 6)
-    logger.info(f"Starting linear regression with pre weighting\nTested penalizing values: {pen_vals}")
 
-    alphas_weighted, colors_weighted = optimize_fused_lasso(
-        anchors, xi, network, pen_vals, weights=weights, performance_threshold=0.999
-    )
+    for i in range(num_time_steps):
 
-    xi_cv_weighted = build_cv_from_alpha(alphas, dynamic.num_opinions, weights=weights)
+        # no pre-weighting
+        logger.info(f"Starting linear regression without pre weighting\nTested penalizing values: {pen_vals}")
+        arr_alphas[i, :, :], arr_colors[i, :, :] = optimize_fused_lasso(anchors,
+                                                                        transition_manifold_samples[i],
+                                                                        network,
+                                                                        pen_vals,
+                                                                        performance_threshold=0.999
+                                                                        )
 
-    return alphas, colors, xi_cv, alphas_weighted, colors_weighted, xi_cv_weighted
+        xi_cvs.append(build_cv_from_alpha(arr_alphas[i, :, :], num_opinions))
+
+        # with pre-weighting
+        logger.info(f"Starting linear regression with pre weighting\nTested penalizing values: {pen_vals}")
+        arr_alphas_weighted[i, :, :], arr_colors_weighted[i, :, :] = optimize_fused_lasso(anchors,
+                                                                                          transition_manifold_samples[i],
+                                                                                          network,
+                                                                                          pen_vals,
+                                                                                          weights=weights,
+                                                                                          performance_threshold=0.999
+                                                                                          )
+
+        xi_cvs_weighted.append(build_cv_from_alpha(arr_alphas_weighted[i, :, :], num_opinions, weights=weights))
+
+    xi_cvs = np.array(xi_cvs)
+    xi_cvs_weighted = np.array(xi_cvs_weighted)
+
+    return arr_alphas, arr_colors, xi_cvs, arr_alphas_weighted, arr_colors_weighted, xi_cvs_weighted

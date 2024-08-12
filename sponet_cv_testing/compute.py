@@ -1,14 +1,11 @@
 from sponet_cv_testing.computation.run_method import *
 import logging
-import sponet_cv_testing.workdir as wd
-from sponet_cv_testing.datamanagement import write_misc_data
-from numba import njit, prange
 
 logger = logging.getLogger("testpipeline.compute")
 
 
-def compute_run(network, parameters: dict, work_path: str):
-    runlog_handler = logging.FileHandler(f"{work_path}/runlog.log")
+def compute_run(network, parameters: dict, result_path: str) -> None:
+    runlog_handler = logging.FileHandler(f"{result_path}/runlog.log")
     runlog_handler.setLevel(logging.DEBUG)
     runlog_formatter = logging.Formatter("%(asctime)s - %(message)s")
     runlog_handler.setFormatter(runlog_formatter)
@@ -16,7 +13,22 @@ def compute_run(network, parameters: dict, work_path: str):
 
     try:
         dynamic_parameters: dict = parameters["dynamic"]
+        simulation_parameters: dict = parameters["simulation"]
+        sampling_parameters: dict = simulation_parameters["sampling"]
+
         dynamic = setup_dynamic(dynamic_parameters, network)
+
+        num_nodes = dynamic.num_agents
+        num_coordinates = simulation_parameters["num_coordinates"]
+        triangle_speedup = simulation_parameters["triangle_speedup"]
+        num_opinions = dynamic_parameters["num_states"]
+
+        # Sampling Parameters
+        lag_time = sampling_parameters["lag_time"]
+        short_integration_time = sampling_parameters.get("short_integration_time", -1)
+        num_time_steps = sampling_parameters.get("num_timesteps", 1)
+        num_anchor_points = sampling_parameters["num_anchor_points"]
+        num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
 
         if dynamic.num_opinions <= 256:
             state_type = np.uint8
@@ -25,114 +37,46 @@ def compute_run(network, parameters: dict, work_path: str):
         else:
             state_type = np.uint32
 
-    # Sampling
-        simulation_parameters: dict = parameters["simulation"]
-        sampling_parameters: dict = simulation_parameters["sampling"]
+        anchors = create_anchor_points(dynamic,
+                                       num_anchor_points,
+                                       lag_time,
+                                       short_integration_time
+                                       ).astype(state_type)
+        np.save(f"{result_path}anchor_states", anchors)
 
-        anchors = create_anchor_points(dynamic, sampling_parameters).astype(state_type)
-
-        samples = sample_anchors(dynamic, sampling_parameters, simulation_parameters, anchors)
-
-        """
-        np.savez_compressed(f"{work_path}sample_data",
-                            x_anchor=anchors,
-                            x_samples=samples)
-        """
-
-        np.save(f"{work_path}anchor_states", anchors)
-        np.save(f"{work_path}samples", samples)
-
-        num_nodes = dynamic.num_agents
-        num_coordinates = parameters["simulation"]["num_coordinates"]
-        triangle_speedup = parameters["simulation"]["triangle_speedup"]
+        samples = sample_anchors(dynamic,
+                                 anchors,
+                                 lag_time,
+                                 num_time_steps,
+                                 num_samples_per_anchor
+                                 )
+        np.save(f"{result_path}samples", samples)
 
         diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
-            approximate_tm(samples, num_nodes, num_coordinates, triangle_speedup))
+            approximate_tm(samples,
+                           num_nodes,
+                           num_coordinates,
+                           triangle_speedup)
+        )
+        np.save(f"{result_path}transition_manifolds", diffusion_maps)
+        np.save(f"{result_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
+        np.save(f"{result_path}intrinsic_dimension_estimates", dimension_estimates)
 
-        np.save(f"{work_path}diffusion_maps", diffusion_maps)
-        np.save(f"{work_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
-        np.save(f"{work_path}intrinsic_dimension_estimates", dimension_estimates)
-
-
-
-        if num_timesteps <= 1:
-
-            alphas, colors, xi_cv, alphas_weighted, colors_weighted, xi_cv_weighted = (
-                linear_regression(simulation_parameters, xi, anchors, dynamic))
-
-            _save_cv(work_path, alphas, colors, xi_cv)
-            _save_cv_degree_weighted(work_path, alphas, colors, xi_cv_weighted)
-
-        else:  # parallel case
-            # If trianglespeedup is not enabled transition manifolds will be computed sequentially with parallel tasks
-            if simulation_parameters.get("triangle_speedup", False):
-                _sequential_transition_manifolds(dynamic, simulation_parameters, samples)
-
-            _parallel_transition_matrix_and_regression(dynamic, simulation_parameters, anchors, samples, work_path)
-
+        cv_coefficients, cv_samples, cv, cv_coefficients_weighted, cv_samples_weighted, cv_weighted = (
+            linear_regression(diffusion_maps,
+                              anchors,
+                              network,
+                              num_opinions)
+        )
+        np.save(f"{result_path}cv_coefficients", cv_coefficients)
+        np.save(f"{result_path}cv_samples", cv_samples)
+        np.save(f"{result_path}cv", cv)
+        np.save(f"{result_path}cv_coefficients_weighted", cv_coefficients)
+        np.save(f"{result_path}cv_samples_weighted", cv_samples)
+        np.save(f"{result_path}cv_weighted", cv)
 
     except Exception as e:
         logger.debug(str(e))
         raise e
-    return
-
-
-
-
-def save_array(path: str, name: str, data_array: np.ndarray) -> None:
-
 
     return
-
-
-
-@njit(parallel=True)
-def _parallel_transition_matrix_and_regression(dynamic, simulation_parameters: dict, anchors, samples, work_path):
-    d = simulation_parameters["num_coordinates"]
-    num_anchorpoints = samples.shape[0]
-    num_timesteps = samples.shape[2]
-
-    xi = np.empty((num_timesteps, num_anchorpoints, d))
-    eigenvalues = np.empty((num_timesteps, d))
-    diffusion_bandwidths = np.empty(num_timesteps)
-    dim_estimates = np.empty(num_timesteps)
-
-    alphas_list = np.empty((num_timesteps, dynamic.num_agents, d))
-    alphas_weighted_list = np.empty((num_timesteps, dynamic.num_agents, d))
-    colors_list = np.empty((num_timesteps, dynamic.num_agents))
-    colors_weighted_list = np.empty((num_timesteps, dynamic.num_agents))
-    xi_cv_list = [None for i in range(num_timesteps)]
-    xi_cv_weighted_list = [None for i in range(num_timesteps)]
-
-    for i in prange(samples.shape[2]):
-        xi[i, :, :], eigenvalues[i, :], diffusion_bandwidths[i], dim_estimates[i] = (
-            approximate_tm(dynamic, simulation_parameters, samples[:, :, i, :]))
-
-        linear_regression(simulation_parameters, xi, anchors, dynamic)
-
-        alphas, colors, xi_cv, alphas_weighted, colors_weighted, xi_cv_weighted = (
-            linear_regression(simulation_parameters, xi, anchors, dynamic))
-
-        alphas_list[i, :, :] = alphas
-        alphas_weighted_list[i, :, :] = alphas_weighted
-        colors_list[i, :] = colors
-        colors_weighted_list[i, :] = colors_weighted
-        xi_cv_list[i] = xi_cv
-        xi_cv_weighted_list[i] = xi_cv_weighted
-
-    _save_cv(work_path, alphas_list, colors_list, xi_cv_list)
-    _save_cv_degree_weighted(work_path, alphas_weighted_list, colors_weighted_list, xi_cv_weighted_list)
-
-    return
-
-
-def _save_cv(path, alphas, colors, xi):
-    np.savez(f"{path}cv_optim.npz", alphas=alphas, xi_fit=colors)
-    with open(f"{path}cv.pkl", "wb") as file:
-        pickle.dump(xi, file)
-
-
-def _save_cv_degree_weighted(path, alphas, colors, xi):
-    np.savez(f"{path}cv_optim_degree_weighted.npz", alphas=alphas, xi_fit=colors)
-    with open(f"{path}cv_degree_weighted.pkl", "wb") as file:
-        pickle.dump(xi, file)

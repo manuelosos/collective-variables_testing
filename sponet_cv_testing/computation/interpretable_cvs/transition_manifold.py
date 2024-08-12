@@ -7,11 +7,11 @@ from scipy.sparse.linalg import ArpackNoConvergence, ArpackError
 logger = logging.getLogger("testpipeline.compute.transition_manifold")
 
 
-def compute_transition_manifolds(samples: np.ndarray,
-                                 bandwidth_transitions: float,
-                                 num_coordinates: int,
-                                 distance_matrix_triangle_inequality_speedup: bool = False
-                                 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def approximate_transition_manifolds(samples: np.ndarray,
+                                     bandwidth_transitions: float,
+                                     num_coordinates: int,
+                                     distance_matrix_triangle_inequality_speedup: bool = False
+                                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes the transition manifold of a set of samples. Diffusion maps will be computed for every timestep.
     The diffusion bandwidths will be optimized automatically.
@@ -36,7 +36,7 @@ def compute_transition_manifolds(samples: np.ndarray,
     -------
     diffusion_maps, diffusion_maps_eigenvalues, dimension_estimates, bandwidth_diffusion_maps :
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
-        diffusion_maps.shape = (num_time steps, num_initial_states, num_coordinates),
+        diffusion_maps.shape = (num_time_steps, num_initial_states, num_coordinates),
         diffusion_maps_eigenvalues.shape = (num_time_steps, num_coordinates+1),
         dimension_estimates.shape = (num_time_steps),
         bandwidth_diffusion_maps.shape = (num_time_steps)
