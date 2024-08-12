@@ -55,8 +55,6 @@ def generate_network(network_parameters: dict, save_path: str, filename: str="ne
     model: str = network_parameters["model"]
     num_nodes: int = network_parameters["num_nodes"]
 
-    logger.debug(f"Generating new {model} network with {num_nodes} nodes.")
-
     if model == "albert-barabasi":
         num_attachments: int = network_parameters["num_attachments"]
         network = ng.BarabasiAlbertGenerator(num_nodes, num_attachments)()
@@ -70,7 +68,6 @@ def generate_network(network_parameters: dict, save_path: str, filename: str="ne
         raise ValueError(f"Unknown network model: {model}")
 
     dm.save_network(network, save_path, filename)
-    logger.debug(f"Saved network to {save_path}{network.name}")
     return network
 
 
@@ -85,7 +82,6 @@ def setup_network(network_parameters: dict, work_path: str, archive_path: str) -
         network = generate_network(network_parameters, work_path)
         network_id: str = network.name
 
-    logger.info(f"Network {network_id} of type {network.name} and with {network.number_of_nodes()} nodes setup")
     return network
 
 

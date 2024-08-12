@@ -5,9 +5,10 @@ logger = logging.getLogger("testpipeline.compute")
 
 
 def compute_run(network, parameters: dict, result_path: str) -> None:
+
     runlog_handler = logging.FileHandler(f"{result_path}/runlog.log")
     runlog_handler.setLevel(logging.DEBUG)
-    runlog_formatter = logging.Formatter("%(asctime)s - %(message)s")
+    runlog_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     runlog_handler.setFormatter(runlog_formatter)
     logger.addHandler(runlog_handler)
 
@@ -37,6 +38,7 @@ def compute_run(network, parameters: dict, result_path: str) -> None:
         else:
             state_type = np.uint32
 
+        logger.info(f"Creating {num_anchor_points} anchor points.")
         anchors = create_anchor_points(dynamic,
                                        num_anchor_points,
                                        lag_time,
@@ -44,6 +46,8 @@ def compute_run(network, parameters: dict, result_path: str) -> None:
                                        ).astype(state_type)
         np.save(f"{result_path}anchor_states", anchors)
 
+        logger.info(f"Sampling {num_samples_per_anchor} samples on {num_anchor_points} anchors "
+                    f"with {num_time_steps} time steps.")
         samples = sample_anchors(dynamic,
                                  anchors,
                                  lag_time,
@@ -52,6 +56,7 @@ def compute_run(network, parameters: dict, result_path: str) -> None:
                                  )
         np.save(f"{result_path}samples", samples)
 
+        logger.info(f"Computing {num_time_steps} diffusion maps")
         diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
             approximate_tm(samples,
                            num_nodes,
