@@ -53,8 +53,8 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         os.mkdir(tm_path)
         cv_path = f"{result_path}collective_variables/"
         os.mkdir(cv_path)
-        misc_path = f"{result_path}misc_data"
-        os.mkdir(misc_path)
+        #misc_path = f"{result_path}misc_data"
+        #os.mkdir(misc_path)
 
         if dynamic.num_opinions <= 256:
             state_type = np.uint8
@@ -71,7 +71,7 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
                                        ).astype(state_type)
         np.save(f"{samples_path}network_anchor_points", anchors)
 
-        logger.info(f"Sampling {num_samples_per_anchor*num_anchor_points} samples."
+        logger.info(f"Sampling {num_samples_per_anchor*num_anchor_points} samples "
                     f"with {num_time_steps} time steps.")
         samples = sample_anchors(dynamic,
                                  anchors,

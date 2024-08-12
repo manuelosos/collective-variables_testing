@@ -107,7 +107,7 @@ def compute_distance_matrices(samples: np.ndarray,
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel_triangle_speedup(samples[:, :, i, :],
                                                                                                 bandwidth_transition)
     else:
-        for i in prange(num_time_steps):
+        for i in range(num_time_steps):
             distance_matrices[i, :, :], _ = _numba_dist_matrix_gaussian_kernel(samples[:, :, i, :],
                                                                                bandwidth_transition)
     return distance_matrices
