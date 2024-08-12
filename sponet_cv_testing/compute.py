@@ -27,21 +27,33 @@ def compute_run(network, parameters: dict, work_path: str):
 
     # Sampling
         simulation_parameters: dict = parameters["simulation"]
-
         sampling_parameters: dict = simulation_parameters["sampling"]
+
         anchors = create_anchor_points(dynamic, sampling_parameters).astype(state_type)
 
         samples = sample_anchors(dynamic, sampling_parameters, simulation_parameters, anchors)
 
-        np.savez_compressed(f"{work_path}x_data",
+        """
+        np.savez_compressed(f"{work_path}sample_data",
                             x_anchor=anchors,
                             x_samples=samples)
+        """
+
+        np.save(f"{work_path}anchor_states", anchors)
+        np.save(f"{work_path}samples", samples)
 
         num_nodes = dynamic.num_agents
         num_coordinates = parameters["simulation"]["num_coordinates"]
         triangle_speedup = parameters["simulation"]["triangle_speedup"]
+
         diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates = (
             approximate_tm(samples, num_nodes, num_coordinates, triangle_speedup))
+
+        np.save(f"{work_path}diffusion_maps", diffusion_maps)
+        np.save(f"{work_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
+        np.save(f"{work_path}intrinsic_dimension_estimates", dimension_estimates)
+
+
 
         if num_timesteps <= 1:
 
@@ -67,7 +79,10 @@ def compute_run(network, parameters: dict, work_path: str):
 
 
 
+def save_array(path: str, name: str, data_array: np.ndarray) -> None:
 
+
+    return
 
 
 
