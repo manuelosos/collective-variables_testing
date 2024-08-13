@@ -215,22 +215,21 @@ def create_runfiles(
     triad_probabilities = [1]
     if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [1.5, 2.0, 2.5, 3.0]
+    lag_time_l = [5]
     num_anchor_points_l = [2000]
     num_samples_per_anchor_l = [300]
+    triangle_speedups = [True, False]
+    num_timesteps_l = [1, 5, 10]
 
-    num_runs_per_set = 5 # seems dumb but works
+    num_runs_per_set = 3
 
     df = dm.read_data_csv()
 
-    # TODO checken ob eine der Raten größer als 10 ist. In diesem Fall ist die ID nicht mehr eindeutig
-
-
     runfiles = []
-    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor in \
+    for r_ab, r_ba, r_tilde_ab, r_tilde_ba, triad_p, lag_time, num_anchor_points, num_samples_per_anchor, num_timesteps, triangle_speedup in \
             (
             product(r_ab_l, r_ba_l, r_tilde_ab_l, r_tilde_ba_l, triad_probabilities,
-                    lag_time_l, num_anchor_points_l, num_samples_per_anchor_l)
+                    lag_time_l, num_anchor_points_l, num_samples_per_anchor_l, num_timesteps_l, triangle_speedups)
             ):
 
         if network_model == "albert-barabasi":
@@ -241,7 +240,11 @@ def create_runfiles(
         run_id = (f"{dynamic}{num_states}_"
                   f"{network_id_str}"
                   f"r{_fstr(r_ab)}-{_fstr(r_ba)}_rt{_fstr(r_tilde_ab)}-{_fstr(r_tilde_ba)}"
-                  f"_l{_fstr(lag_time)}_a{num_anchor_points}_s{num_samples_per_anchor}")
+                  f"_l{_fstr(lag_time)}_{num_timesteps}ts_a{num_anchor_points}_s{num_samples_per_anchor}")
+        if triangle_speedup:
+            run_id += "_ts1"
+        else:
+            run_id += "_ts0"
 
         run = {
             "run_id": run_id,
@@ -267,8 +270,10 @@ def create_runfiles(
                     "method": "local_cluster",
                     "lag_time": lag_time,
                     "num_anchor_points": num_anchor_points,
-                    "num_samples_per_anchor": num_samples_per_anchor
+                    "num_samples_per_anchor": num_samples_per_anchor,
+                    "num_timesteps": num_timesteps
                 },
+                "triangle_speedup": triangle_speedup,
                 "num_coordinates": 10
             }
         }
