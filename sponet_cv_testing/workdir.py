@@ -19,6 +19,11 @@ def create_work_dir(path: str, run_parameters: dict) -> str:
     os.mkdir(run_folder_path)
     os.mkdir(f"{run_folder_path}misc_data/")
 
+    remarks = run_parameters.get("remarks", "")
+
+    with open(f"{run_folder_path}misc_data/remarks.txt", "w") as remarks_file:
+        remarks_file.write(remarks)
+
     with open(f"{run_folder_path}parameters.json", "w") as target_file:
         json.dump(run_parameters, target_file, indent=3)
 

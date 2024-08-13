@@ -27,7 +27,7 @@ If "other value" is also conditional, the corresponding condition will not be sp
 The first layer of the file consists of
 * **run_id**: string 
   * should be unique in the data-csv
-* **remark**: string
+* **remark**: string (optional) 
   * Place for comments and remarks on the run. Will be saved in misc data.
 * **dynamic**: dict 
 * **network**: dict
