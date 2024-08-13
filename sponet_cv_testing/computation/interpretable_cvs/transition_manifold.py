@@ -256,7 +256,7 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
                 if upper_triang_bound < upper_min:
                     upper_min = upper_triang_bound
 
-            # If difference is within tolerance
+            # If difference is within tolerance, replace exact computation with mean of upper- and lower bound
             if (upper_min - lower_max) / lower_max < triangle_speedup_tolerance:
                 distance_matrix[i, j] = 0.5 * (lower_max + upper_min)
                 n_speedup = n_speedup + 1
