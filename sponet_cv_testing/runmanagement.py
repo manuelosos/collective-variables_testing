@@ -4,6 +4,7 @@ import time
 import logging
 import networkx as nx
 import sys
+import datetime as dt
 
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
@@ -90,7 +91,7 @@ def run_queue(
         save_path: str,
         archive_path: str,
         exit_after_error: bool = False,
-        misc_data: dict=None
+        misc_data: dict = None
 ) -> None:
     """
     Runs the tests specified in the runfiles. The results will be saved in save_path.
@@ -133,8 +134,6 @@ def run_queue(
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
 
-
-
         wd.write_metadata(work_path, misc_data)
 
         try:
@@ -153,7 +152,7 @@ def run_queue(
             end_time = time.time()
             run_time = end_time - start_time
             run_times.append(run_time)
-            wd.write_metadata(work_path, {"run_time": run_time})
+            wd.write_metadata(work_path, {"run_time": dt.timedelta(seconds=run_time)})
 
             logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
             run_ids.append(run_id)
@@ -162,6 +161,6 @@ def run_queue(
                 file.write(f"The existence of this file indicates, that the run {run_id} finished without errors.")
             logger.debug("run_finished file created.")
 
-    logger.info(f"Finished runs : {run_ids} in {sum(run_times)} seconds.\n\n")
+    logger.info(f"Finished runs : {run_ids} in {dt.timedelta(seconds=sum(run_times))}\n\n")
     return
 

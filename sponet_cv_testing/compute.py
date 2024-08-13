@@ -1,8 +1,9 @@
 import numpy as np
-
+import sponet_cv_testing.workdir as wd
 from sponet_cv_testing.computation.run_method import *
 import logging
 import os
+import datetime as dt
 
 logger = logging.getLogger("testpipeline.compute")
 
@@ -94,7 +95,10 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         np.save(f"{tm_path}transition_manifolds", diffusion_maps)
         np.save(f"{tm_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
         np.save(f"{tm_path}intrinsic_dimension_estimates", dimension_estimates)
-        np.savetxt(f"{misc_path}distance_matrices_compute_time", distance_matrices_compute_times, fmt="%.9g")
+
+        wd.save_compute_times(f"{misc_path}distance_matrices_compute_time",
+                              distance_matrices_compute_times,
+                              f"triangle_inequality_speedup={triangle_speedup}")
 
         cv_coefficients, cv_samples, cv, cv_coefficients_weighted, cv_samples_weighted, cv_weighted = (
             linear_regression(diffusion_maps,
