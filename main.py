@@ -2,6 +2,7 @@ import sys
 import logging
 import numba
 import json
+import os
 
 
 from sponet_cv_testing.runmanagement import get_runfiles, run_queue
@@ -26,17 +27,17 @@ complete_file_handler.setFormatter(complete_formatter)
 logger.addHandler(complete_file_handler)
 logger.addHandler(console_handler)
 
-# TODO Konsolen Logging fixen. Gerade werden manche messages zweimal in die Konsole geschickt.
-#  -> Liegt daran, dass zwei handler vorhanden sind. Keine Ahnung warum die dann zweimal in die Konsole schicken
-
 
 def setup() -> tuple[dict, dict]:
     with open("CONFIG.json", "r") as file:
         config = json.load(file)
 
     numba.set_num_threads(config["number_of_threads"])
+    cpu_count = os.cpu_count()
 
-    misc_data: dict = {"device": config["device"]}
+    misc_data: dict = {"device": config["device"],
+                       "number of numba threads": config["number_of_threads"],
+                       "cpu count": cpu_count}
 
     return config, misc_data
 
@@ -53,8 +54,6 @@ def main() -> None:
     """
     logging.info("Started main.py")
     args = sys.argv[1:]
-
-    # TODO misc Data sachen überarbeiten es sollte eine bessere art geben das zu machen
 
     queue_path: str = args[0]
     work_dir_path: str = args[1]

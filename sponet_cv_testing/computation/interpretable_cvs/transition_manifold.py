@@ -8,6 +8,7 @@ import ctypes
 logger = logging.getLogger("testpipeline.compute.transition_manifold")
 
 # Setup to access system time in numba compiled functions
+# Only required in compute_distance_matrices()
 get_system_clock = ctypes.pythonapi._PyTime_GetSystemClock
 as_seconds_double = ctypes.pythonapi._PyTime_AsSecondsDouble
 get_system_clock.argtypes = []

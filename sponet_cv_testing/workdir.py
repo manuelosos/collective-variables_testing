@@ -40,22 +40,3 @@ def save_compute_times(path: str, times: np.ndarray, header="") -> None:
     np.savetxt(path, times, fmt="%s", header=header)
     return
 
-
-def save_array(path: str, data: np.ndarray) -> None:
-    """
-    Saves an array in the specified path.
-    Parameters
-    ----------
-    path : str
-        Path to which the data is saved. This includes the name of the file.
-        If any parent directory does not exist, it will be created.
-        The file extension is automatically appended.
-    data : np.ndarray
-        Array to be saved.
-
-    Returns None
-    """
-
-
-
-    return
