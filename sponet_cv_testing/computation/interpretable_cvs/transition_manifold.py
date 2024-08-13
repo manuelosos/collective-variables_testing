@@ -163,8 +163,6 @@ def optimize_bandwidth_diffusion_map(distance_matrix: np.ndarray) -> tuple[float
     optim_bandwidth_diffusion_map: float = optim_epsilon ** 0.5
     dimension_estimate: float = derivative[optim_idx]
 
-    logger.debug(f"Optimal bandwidth: {optim_bandwidth_diffusion_map}")
-
     return optim_bandwidth_diffusion_map, dimension_estimate
 
 

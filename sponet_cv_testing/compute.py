@@ -50,13 +50,13 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
 
         samples_path = f"{result_path}samples/"
-        os.mkdir(samples_path)
+        os.makedirs(samples_path, exist_ok=True)
         tm_path = f"{result_path}transition_manifolds/"
-        os.mkdir(tm_path)
+        os.makedirs(tm_path, exist_ok=True)
         cv_path = f"{result_path}collective_variables/"
-        os.mkdir(cv_path)
+        os.makedirs(cv_path, exist_ok=True)
         misc_path = f"{result_path}misc_data/"
-        os.mkdir(misc_path)
+        os.makedirs(misc_path, exist_ok=True)
 
         if dynamic.num_opinions <= 256:
             state_type = np.uint8
@@ -73,7 +73,7 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
                                        ).astype(state_type)
         np.save(f"{samples_path}network_anchor_points", anchors)
 
-        logger.info(f"Sampling {num_samples_per_anchor*num_anchor_points} samples "
+        logger.info(f"Sampling {num_samples_per_anchor} samples per {num_anchor_points} "
                     f"with {num_time_steps} time steps.")
         samples = sample_anchors(dynamic,
                                  anchors,
@@ -111,6 +111,8 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
 
     except Exception as e:
         logger.debug(str(e))
+        logger.removeHandler(runlog_handler)
         raise e
-
+    logger.removeHandler(runlog_handler) 
+    # Handler has to be removed at the end to avoid duplicate logging of consecutive runs
     return

@@ -98,7 +98,7 @@ def approximate_transition_manifolds(
         distance_matrix_triangle_inequality_speedup: bool
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     num_time_steps = samples.shape[2]
-    logger.debug(f"Computing {num_time_steps} distance_matrices."
+    logger.debug(f"Computing {num_time_steps} distance_matrices "
                  f"with triangle speedup = {distance_matrix_triangle_inequality_speedup}.")
     bandwidth_transitions = (num_nodes / 2) ** 0.5
     distance_matrices, distance_matrix_compute_times = (
@@ -141,7 +141,7 @@ def linear_regression(
 
     for i in range(num_time_steps):
         # no pre-weighting
-        logger.debug(f"Starting linear regression without pre weighting.")
+        logger.debug(f"Time step {i}: Starting linear regression without pre weighting.")
         arr_alphas[i, :, :], arr_colors[i, :, :] = optimize_fused_lasso(anchors,
                                                                         transition_manifold_samples[i],
                                                                         network,
@@ -152,7 +152,7 @@ def linear_regression(
         xi_cvs.append(build_cv_from_alpha(arr_alphas[i, :, :], num_opinions))
 
         # with pre-weighting
-        logger.debug(f"Starting linear regression with pre weighting.")
+        logger.debug(f"Time step {i}: Starting linear regression with pre weighting.")
         arr_alphas_weighted[i, :, :], arr_colors_weighted[i, :, :] = (
             optimize_fused_lasso(anchors,
                                  transition_manifold_samples[i],

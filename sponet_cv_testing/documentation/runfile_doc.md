@@ -129,16 +129,20 @@ Allowed network models:
 * Albert-Barabasi
   * Key: albert-barabasi
   * In the literature mostly called "Barabási-Albert-Model"
-  
-### Details on Datamagement 
-After computing a run the results are saved in a corresponding folder. 
 
-#### Network Datamanagement
-The network will be saved regardless of "archive". 
-The network is always in the results directory with the rest of the intermediate results of the run.
-This should not be a problem since a network with 1000 nodes just takes 100kb of space.
-This assumes that the network is in the 
-[graphml format](https://networkx.org/documentation/stable/reference/readwrite/graphml.html).
-Archiving just means that the network is additionally saved in the central data structure.
-Specific networks of special interest should be archived.
-Otherwise, a new network should be generated every run.
+
+##### Results
+
+The results of each run will be saved in an individual folder. The folder is located in the path specified in the 
+command line argument. The folder is named after the run_id. 
+The following quantities are saved.
+
+* **network_anchor_points** 
+  * Initial anchor points used to sample the dynamics.
+  * Array of shape=(`num_anchor_points`, `num_nodes`)
+
+* **network_dynamics_sample** 
+  * Samples of the dynamics with initial values chosen as `network_anchor_points`
+  `num_timesteps` determines the number of intermediate samples. Samples will be generated according to 
+  `np.linspace(0, lag_time, num_timesteps)`.
+  * Array of shape `(num_anchor_points, num_samples_per_anchor, num_timesteps, num_nodes)`

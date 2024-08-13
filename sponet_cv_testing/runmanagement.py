@@ -4,7 +4,7 @@ import time
 import logging
 import networkx as nx
 import sys
-import datetime
+
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
 import sponet_cv_testing.workdir as wd
@@ -133,9 +133,9 @@ def run_queue(
         network_parameters: dict = run_parameters["network"]
         network = setup_network(network_parameters, work_path, archive_path)
 
-        # TODO option zum überschreiben von schon existierenden runs einfügen.
 
-        wd.write_misc_data(work_path, misc_data)
+
+        wd.write_metadata(work_path, misc_data)
 
         try:
             compute_run(network, run_parameters, work_path)
@@ -153,7 +153,7 @@ def run_queue(
             end_time = time.time()
             run_time = end_time - start_time
             run_times.append(run_time)
-            dm.write_misc_data(work_path, {"run_time": run_time})
+            wd.write_metadata(work_path, {"run_time": run_time})
 
             logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
             run_ids.append(run_id)
