@@ -17,6 +17,7 @@ from dash_extensions import Keyboard
 import dash_bootstrap_components as dbc
 
 import sponet_cv_testing.datamanagement as dm
+import sponet_cv_testing.resultmanagement as rm
 
 app = Dash(__name__)
 
@@ -213,8 +214,10 @@ def get_table_html(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
              format=Format(precision=2, scheme=Scheme.fixed)),
         dict(id="lag_time", name="lag_time", selectable=True, type="numeric",
              format=Format(precision=1, scheme=Scheme.fixed)),
+        dict(id="num_time_steps", name="time steps", selectable=True, type="numeric",
+             format=Format(precision=2, scheme=Scheme.fixed)),
         dict(id="dim_estimate", name="dim_estimate", selectable=True, type="numeric",
-             format=Format(precision=3, scheme=Scheme.fixed)),
+             format=Format(scheme=Scheme.fixed)),
         dict(id="finished", name="finished", selectable=True, type="text"),
         dict(id="remarks", name="remarks", selectable=True, type="text")
     ]
@@ -293,6 +296,8 @@ def get_tabs_html(tabs_id: str) -> dcc.Tabs:
 
                     get_coords_network_plots_html(),
 
+                    get_timestep_selector(),
+
                     get_cv_plots_html(),
 
                     html.Div([
@@ -361,6 +366,9 @@ def get_coords_network_dropdowns_html():
     return coords_network_plots
 
 
+
+
+
 def get_run_specifics_html():
     specifics = html.Div([
         html.Table([
@@ -410,6 +418,11 @@ def get_coords_network_plots_html():
             ),
         ], style={'display': 'flex', 'flex-direction': 'row'}))
     return coords_network_plots
+
+
+def get_timestep_selector():
+    time_step_selector = dcc.Slider(id="time_step_selector", min=0, max=1, value=0, disabled=True, step=1)
+    return time_step_selector
 
 
 def get_cv_plots_html():
@@ -498,6 +511,36 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
     options = [f"{i}" for i in range(1, run["cv_dim"] + 1)]
     return [options, options, options]
 
+
+@callback(
+    Output("time_step_selector", "value"),
+    Output("time_step_selector", "min"),
+    Output("time_step_selector", "max"),
+    Output("time_step_selector", "disabled"),
+    Input("coordinates_plot_dropdown_runs", "value")
+)
+def update_time_step_selector(selected_run):
+    if selected_run is None:
+        return [0,0,1,True]
+    file_path = f"{results_path}{selected_run}/"
+    run_params = rm.get_parameters(file_path)
+    num_time_steps = run_params["simulation"]["sampling"].get("num_timesteps", 1)
+
+    if num_time_steps == 1:
+        value = 0
+        min = 0
+        max = 1
+        disabled = True
+    else:
+        value = num_time_steps-1
+        min = 0
+        max = num_time_steps-1
+        disabled = False
+
+    return [value, min, max, disabled]
+
+
+
 @callback(
     Output("coordinates_plot_dropdown_runs", "value"),
     Input("keyboard_run_switcher", "n_keydowns"),
@@ -527,8 +570,7 @@ def update_selected_run_specifics_table(selected_run: str):
     if selected_run is None:
         return(["" for i in range(4)])
     file_path = f"{results_path}{selected_run}/"
-    with open(file_path+"parameters.json", "r") as file:
-        run_params = json.load(file)
+    run_params = rm.get_parameters(file_path)
     return dm._translate_run_rates(run_params["dynamic"]["rates"])
 
 
@@ -536,18 +578,21 @@ def update_selected_run_specifics_table(selected_run: str):
 @callback(
     Output("3d_coordinates_plot", "figure"),
     Input("coordinates_plot_dropdown_runs", "value"),
+    Input("time_step_selector", "value"),
     Input("coordinates_plot_dropdown_x", "value"),
     Input("coordinates_plot_dropdown_y", "value"),
     Input("coordinates_plot_dropdown_z", "value"),
     Input("coordinates_plot_dropdown_color", "value")
 )
-def update_3d_coordinates_plot(selected_run, dropdown_x, dropdown_y, dropdown_z, color):
+def update_3d_coordinates_plot(selected_run, time_step, dropdown_x, dropdown_y, dropdown_z, color):
     if dropdown_x is None or dropdown_y is None or dropdown_z is None or selected_run is None:
         raise PreventUpdate
+
     file_path = f"{results_path}{selected_run}/"
-    xi = np.load(file_path + "transition_manifold.npy")
-    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
-    network = dm.open_network(file_path, "network")
+
+    xi = rm.get_transition_manifold(file_path)[time_step]
+    x_anchor = rm.get_anchor_points(file_path)
+    network = rm.open_network(file_path, "network")
 
     color_options, colors = calc_colors(x_anchor, network)
     fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
@@ -579,8 +624,8 @@ def update_network_plot(selected_run, click_data):
         return {}
 
     file_path = f"{results_path}{selected_run}/"
-    x_anchor = np.load(file_path + "x_data.npz")["x_anchor"]
-    network = dm.open_network(file_path, "network")
+    x_anchor = rm.get_anchor_points(file_path)
+    network = rm.open_network(file_path, "network")
 
     if ctx.triggered_id == "coordinates_plot_dropdown_runs":
 
@@ -619,27 +664,30 @@ def update_network_plot(selected_run, click_data):
 @callback(
     Output("cv_network_plots", "figure", allow_duplicate=True),
     Input("coordinates_plot_dropdown_runs", "value"),
+    Input("time_step_selector", "value"),
     Input("cv_selector_dropdown", "value"),
     Input("node_scaling_dropdown", "value"),
     prevent_initial_call=True
 )
-def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
+def update_cv_network_plots(selected_run: str, time_step: int, cv_type: str, scaling: str):
     if selected_run is None:
         return {}
 
     coords_n = 4
 
     file_path = f"{results_path}{selected_run}/"
-    network = dm.open_network(file_path, "network")
+    network = rm.open_network(file_path, "network")
 
-    cv_path = "cv_optim.npz"
     if cv_type == "degree_weighted":
-        cv_path = "cv_optim_degree_weighted.npz"
+        cv_optim = rm.get_cv_coefficients_weighted(file_path)[time_step]
+    else:
+        cv_optim = rm.get_cv_coefficients(file_path)[time_step]
 
-    cv_optim = np.load(file_path + cv_path)
-    alphas = cv_optim["alphas"]
+    alphas = cv_optim
 
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
+
+    print(len(degrees))
 
     if scaling == "linear":
         size_adjustment = np.vectorize(lambda x: 0.5*x+8)
@@ -713,10 +761,11 @@ def update_cv_network_plots(selected_run: str, cv_type: str, scaling: str):
 @callback(
     Output("cv_xixifit_plots", "figure", allow_duplicate=True),
     Input("coordinates_plot_dropdown_runs", "value"),
+Input("time_step_selector", "value"),
     Input("cv_selector_dropdown", "value"),
     prevent_initial_call=True
 )
-def update_cv_xixifit_plots(selected_run: str, cv_type: str):
+def update_cv_xixifit_plots(selected_run: str, time_step: int, cv_type: str):
     if selected_run is None:
         return {}
 
@@ -727,12 +776,16 @@ def update_cv_xixifit_plots(selected_run: str, cv_type: str):
     # {'points': [{'curveNumber': 5, 'pointNumber': 344, 'pointIndex': 344, 'x': -0.4659979045391083, 'y': -0.14735986292362213,
     # 'marker.size': 9, 'marker.color': -0.9999469822103596, 'bbox': {'x0': 216.69, 'x1': 225.69, 'y0': 2693.5875, 'y1': 2702.5875}, 'customdata': [2, -0.9999469822103596]}]}
 
-    cv_path = "cv_optim.npz"
     if cv_type == "degree_weighted":
-        cv_path = "cv_optim_degree_weighted.npz"
-    cv_optim = np.load(file_path + cv_path)
-    xi = np.load(file_path + "transition_manifold.npy")
-    xi_fit = cv_optim["xi_fit"]
+        #cv_optim = rm.get_cv_coefficients_weighted(file_path)[time_step]
+        xi_fit = rm.get_cv_samples_weighted(file_path)[time_step]
+    else:
+        #cv_optim = rm.get_cv_coefficients(file_path)[time_step]
+        xi_fit = rm.get_cv_samples(file_path)[time_step]
+
+    xi = rm.get_transition_manifold(file_path)[time_step]
+
+
 
     fig = ps.make_subplots(rows=4,
                            cols=1,

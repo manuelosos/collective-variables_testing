@@ -43,6 +43,12 @@ def write_metadata(run_folder_path: str, data: dict) -> None:
     return
 
 
+def create_finished_file(result_folder_path: str, run_id) -> None:
+    with open(f"{result_folder_path}run_finished.txt", "w") as file:
+        file.write(f"The existence of this file indicates, that the run {run_id} finished without errors."
+                   f"\ntime: {dt.datetime.now().strftime('%d.%m.%Y %H:%M')}")
+
+
 def save_compute_times(path: str, times: np.ndarray, header="") -> None:
     times = np.array([str(dt.timedelta(seconds=t)) for t in times])
     np.savetxt(path, times, fmt="%s", header=header)
@@ -58,5 +64,65 @@ def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
     return
 
 
+def get_parameters(result_dir_path: str) -> dict:
+    with open(f"{result_dir_path}parameters.json", "r") as file:
+        run_params = json.load(file)
+    return run_params
+
+
+def get_result_format(result_dir_path: str) -> str:
+    file_list = os.listdir(result_dir_path)
+    if "x_data.npz" in file_list:
+        return "old"
+    return "new"
+
+
 def get_dimension_estimate(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([])
     return np.load(f"{result_dir_path}transition_manifolds/intrinsic_dimension_estimates.npy")
+
+
+def get_transition_manifold(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([np.load(f"{result_dir_path}/transition_manifold.npy")])
+    return np.load(f"{result_dir_path}transition_manifolds/transition_manifolds.npy")
+
+
+def get_anchor_points(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.load(f"{result_dir_path}x_data.npz")["x_anchor"]
+    return np.load(f"{result_dir_path}samples/network_anchor_points.npy")
+
+
+def get_cv_coefficients(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([np.load(f"{result_dir_path}cv_optim.npz")["alphas"]])
+    return np.load(f"{result_dir_path}collective_variables/cv_samples.npy")
+
+
+def get_cv_coefficients_weighted(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([np.load(f"{result_dir_path}cv_optim_degree_weighted.npz")["alphas"]])
+    return np.load(f"{result_dir_path}collective_variables/cv_coefficients_weighted.npy")
+
+
+def get_cv_samples(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([np.load(f"{result_dir_path}cv_optim.npz")["xi_fit"]])
+    return np.load(f"{result_dir_path}collective_variables/cv_samples.npy")
+
+
+def get_cv_samples_weighted(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.array([np.load(f"{result_dir_path}cv_optim_degree_weighted.npz")["xi_fit"]])
+    return np.load(f"{result_dir_path}collective_variables/cv_samples_weighted.npy")
+
+

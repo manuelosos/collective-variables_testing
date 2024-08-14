@@ -11,8 +11,6 @@ from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
 import sponet_cv_testing.resultmanagement as rm
 
-
-
 logger = logging.getLogger("testpipeline.runmanagement")
 
 
@@ -89,8 +87,7 @@ def run_queue(
             logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
             run_ids.append(run_id)
 
-            with open(f"{result_path}run_finished.txt", "w") as file:
-                file.write(f"The existence of this file indicates, that the run {run_id} finished without errors.")
+            rm.create_finished_file(result_path, run_id)
             logger.debug("run_finished file created.")
 
     logger.info(f"Finished runs : {run_ids} in {dt.timedelta(seconds=sum(run_times))}\n\n")
