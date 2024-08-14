@@ -53,7 +53,7 @@ The network dict has the following attributes
   * specifies the id of the network that should be loaded. 
     If generate_new=true and archive=true, network_id can be set to archive the network under the given id.
     If in this case the passed network id is not unique, a warning will be logged and a new id will be assigned.
-* **model**: string (generate_new=true)
+* **model**: string 
   * States the model of the network see network models for a list of the allowed networks
 * **num_nodes**: integer (generate_new=true)
   * Number of nodes that the network should have

@@ -9,6 +9,7 @@ import numpy as np
 import csv
 import re
 from dataclasses import dataclass
+import sponet_cv_testing.resultmanagement as rm
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
@@ -36,6 +37,79 @@ else:
 results_csv_path: str = "results/results_table.csv"
 
 
+def archive_run_result(source: str) -> None:
+    with open(f"{source}parameters.json", "r") as target_file:
+        parameters: dict = json.load(target_file)
+
+    run_id: str = str(parameters["run_id"])
+
+    dynamic_parameters: dict = parameters["dynamic"]
+    dynamic_model: str = dynamic_parameters["model"]
+    dynamic_rates: tuple = _translate_run_rates(dynamic_parameters["rates"])
+
+    network_parameters: dict = parameters["network"]
+    network_id = network_parameters.get("network_id", "")
+    network_model = network_parameters["model"]
+
+    if network_parameters["generate_new"]:
+        num_nodes = network_parameters["num_nodes"]
+    else:
+        network = rm.open_network(f"{source}networks", "network")
+        num_nodes = network.number_of_nodes()
+
+    sampling_parameters: dict = parameters["simulation"]["sampling"]
+    lag_time: float = sampling_parameters["lag_time"]
+    num_time_steps: int = sampling_parameters["num_timesteps"]
+    num_anchor_points: int = sampling_parameters["num_anchor_points"]
+    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
+    num_coordinates: int = parameters["simulation"]["num_coordinates"]
+
+    file_list: list[str] = os.listdir(source)
+    if "run_finished.txt" in file_list:
+        finished = True
+        dimension_estimate = rm.get_dimension_estimate(source)[-1]
+
+    else:
+        finished = False
+        dimension_estimate = np.nan
+
+    results = read_data_csv()
+
+    """
+    overwrite: bool = False
+    if run_id in results.index:
+        # If already archived run is unfinished and new run is finished,
+        # the new finished run will overwrite the archived one.
+        if not results.loc[run_id]["finished"] and finished:
+            overwrite = True
+            logger.info(f"Unfinished run with id {run_id} will be overwritten with new finished run.")
+        else:
+            #raise FileExistsError("The run id is not unique")
+            logger.info(f"Run is not unique and not successful run {run_id} will be skipped.")
+            return
+    """
+
+    remarks = read_logs(source)
+
+    remarks += " " + parameters.get("remark", "")
+
+    new_result: list = [
+        dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_time_steps,
+        num_anchor_points, num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
+
+    if run_id in results.index:
+        shutil.rmtree(f"{data_path}results/{run_id}/")
+
+    results.loc[run_id] = new_result
+
+    logger.debug(f"Starting moving files from {source} to {data_path}results/")
+
+    shutil.move(source, f"{data_path}results/")
+    logger.info(f"Finished moving files from {source} to {data_path}results/")
+    save_csv(results)
+    logger.info(f"archived run {run_id} in csv.")
+
+    return
 
 def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
     """
@@ -62,7 +136,7 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
             "network_model": str,
             "num_nodes": int,
             "lag_time": float,
-            "timeseries": bool,
+            "num_time_steps": bool,
             "num_anchor_points": int,
             "num_samples_per_anchor": int,
             "cv_dim": int,
@@ -76,22 +150,6 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
 def save_csv(df: pd.DataFrame) -> None:
 
     df.to_csv(f"{data_path}{results_csv_path}")
-    return
-
-
-def read_misc_data(source: str) -> dict:
-    with open(f"{source}misc_data.txt", "r") as file:
-        reader = csv.reader(file, delimiter=":")
-        data = {}
-        for row in reader:
-            data.update({row[0]: row[1]})
-    return data
-
-
-def write_misc_data(path: str, data: dict) -> None:
-    with open(f"{path}misc_data.txt", "a") as file:
-        for key, value in data.items():
-            file.write(f"{key}:{str(value)}\n")
     return
 
 
@@ -122,27 +180,8 @@ def generate_network_id(parameters) -> str:
     return network_id
 
 
-def archive_network(source: str, parameters: dict) -> str:
-
-    if "network_id" in parameters.keys():
-        network_id = str(parameters["network_id"])
-        if not unique_network_id(network_id):
-            network_id = generate_network_id(parameters)
-            logger.warning(f"Network_id was not unique. Assigned new one: {network_id}")
-    else:
-        network_id = generate_network_id(parameters)
-
-    shutil.copy(f"{source}network", f"{data_path}networks/{network_id}")
-    return network_id
-
-
 def open_network(path: str, network_id: str) -> nx.Graph:
     return nx.read_graphml(f"{path}{network_id}")
-
-
-def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
-    nx.write_graphml(network, f"{save_path}{filename}")
-    return
 
 
 def read_logs(path: str) -> str:
@@ -189,83 +228,7 @@ def _translate_run_rates(rates: dict) -> tuple[float, float, float, float]:
     return r[0, 1], r[1, 0], r_tilde[0, 1], r_tilde[1, 0]
 
 
-def archive_run_result(source: str) -> None:
 
-    with open(f"{source}parameters.json", "r") as target_file:
-        parameters: dict = json.load(target_file)
-
-    run_id: str = str(parameters["run_id"])
-
-    dynamic_parameters: dict = parameters["dynamic"]
-    dynamic_model: str = dynamic_parameters["model"]
-    dynamic_rates: tuple = _translate_run_rates(dynamic_parameters["rates"])
-
-    network_parameters: dict = parameters["network"]
-    if network_parameters["generate_new"]:
-        if "archive" in network_parameters.keys() and network_parameters["archive"]:
-            network_id = archive_network(source, network_parameters)
-        else:
-            network_id = np.nan  # Network id is given when the network is reused for another test.
-        network_model = network_parameters["model"]
-        num_nodes = network_parameters["num_nodes"]
-    else:
-        network_id = network_parameters["network_id"]
-        network = open_network(f"{data_path}networks/", network_id)
-        num_nodes = network.number_of_nodes()
-        network_model = network.name.split["_"][0]
-
-    sampling_parameters: dict = parameters["simulation"]["sampling"]
-    lag_time: float = sampling_parameters["lag_time"]
-    num_anchor_points: int = sampling_parameters["num_anchor_points"]
-    num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
-    num_coordinates: int = parameters["simulation"]["num_coordinates"]
-
-
-    file_list: list[str] = os.listdir(source)
-    if "run_finished.txt" in file_list:
-        finished = True
-        misc_data = read_misc_data(source)
-        dimension_estimate: float = float(misc_data["dimension_estimate"])
-    else:
-        finished = False
-        dimension_estimate = np.nan
-
-    results = read_data_csv()
-
-    """
-    overwrite: bool = False
-    if run_id in results.index:
-        # If already archived run is unfinished and new run is finished,
-        # the new finished run will overwrite the archived one.
-        if not results.loc[run_id]["finished"] and finished:
-            overwrite = True
-            logger.info(f"Unfinished run with id {run_id} will be overwritten with new finished run.")
-        else:
-            #raise FileExistsError("The run id is not unique")
-            logger.info(f"Run is not unique and not sucesful run {run_id} will be skipped.")
-            return
-    """
-
-    remarks = read_logs(source)
-
-    new_result: list = [
-        dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_anchor_points,
-        num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
-
-    if run_id in results.index:
-        shutil.rmtree(f"{data_path}results/{run_id}/")
-
-    results.loc[run_id] = new_result
-
-
-    logger.debug(f"Starting moving files from {source} to {data_path}results/")
-
-    shutil.move(source, f"{data_path}results/")
-    logger.info(f"Finished moving files from {source} to {data_path}results/")
-    save_csv(results)
-    logger.info(f"archived run {run_id} in csv.")
-
-    return
 
 
 def archive_dir(path: str) -> None:

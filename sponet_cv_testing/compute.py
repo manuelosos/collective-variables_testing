@@ -1,5 +1,5 @@
 import numpy as np
-import sponet_cv_testing.workdir as wd
+import sponet_cv_testing.resultmanagement as rm
 from sponet_cv_testing.computation.run_method import *
 import logging
 import os
@@ -96,7 +96,7 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         np.save(f"{tm_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
         np.save(f"{tm_path}intrinsic_dimension_estimates", dimension_estimates)
 
-        wd.save_compute_times(f"{misc_path}distance_matrices_compute_time",
+        rm.save_compute_times(f"{misc_path}distance_matrices_compute_time",
                               distance_matrices_compute_times,
                               f"triangle_inequality_speedup={triangle_speedup}")
 

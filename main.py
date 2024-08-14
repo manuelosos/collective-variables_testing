@@ -47,25 +47,32 @@ def main() -> None:
     Starts the runqueue from the command line.
     args:
     queue_path: str
-        Path to the testfiles. Path can lead to a folder in which all testfiles are located. In this case path must end
+        Path to the runfiles. Path can lead to a folder in which all runfiles are located. In this case path must end
         with "/". Path can also lead to a single json file. In this case path must end with ".json"
-    work_dir_path: str
-        Path to a directory where the work-directories for each test are saved.
+    result_dir_path: str
+        Path to a directory where the result-directories for each run are saved.
+    network_dir_path: str (optional)
+     Path to a directory where the networks are saved.
     """
     logging.info("Started main.py")
-    args = sys.argv[1:]
 
+    config, misc_data = setup()
+
+    args = sys.argv[1:]
     queue_path: str = args[0]
     work_dir_path: str = args[1]
 
-    config, misc_data = setup()
+    if len(args) > 2:
+        network_dir_path = args[2]
+    else:
+        network_dir_path = config.get("network_dir_path", None)
 
     run_files_list: list[dict] = get_runfiles(queue_path)
 
     run_queue(
         run_files_list,
         work_dir_path,
-        config["archive_path"],
+        network_dir_path,
         exit_after_error=config["exit_after_error"],
         misc_data=misc_data)
 

@@ -2,9 +2,10 @@ import json
 import os
 import datetime as dt
 import numpy as np
+import networkx as nx
 
 
-def create_work_dir(path: str, run_parameters: dict) -> str:
+def create_result_dir(path: str, run_parameters: dict, network: nx.Graph) -> str:
     """Creates a directory in the specified path and creates some metadata files.
 
     Parameters:
@@ -27,6 +28,8 @@ def create_work_dir(path: str, run_parameters: dict) -> str:
     with open(f"{run_folder_path}parameters.json", "w") as target_file:
         json.dump(run_parameters, target_file, indent=3)
 
+    save_network(network, f"{run_folder_path}", "network")
+
     now = dt.datetime.now().strftime("%d.%m.%Y %H:%M")
     write_metadata(run_folder_path, {"run_started": now})
 
@@ -45,3 +48,15 @@ def save_compute_times(path: str, times: np.ndarray, header="") -> None:
     np.savetxt(path, times, fmt="%s", header=header)
     return
 
+
+def open_network(path: str, network_id: str) -> nx.Graph:
+    return nx.read_graphml(f"{path}{network_id}")
+
+
+def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
+    nx.write_graphml(network, f"{save_path}{filename}")
+    return
+
+
+def get_dimension_estimate(result_dir_path: str) -> np.ndarray:
+    return np.load(f"{result_dir_path}transition_manifolds/intrinsic_dimension_estimates.npy")
