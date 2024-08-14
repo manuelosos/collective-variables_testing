@@ -62,6 +62,7 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
             "network_model": str,
             "num_nodes": int,
             "lag_time": float,
+            "timeseries": bool,
             "num_anchor_points": int,
             "num_samples_per_anchor": int,
             "cv_dim": int,
