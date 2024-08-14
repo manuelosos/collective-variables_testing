@@ -37,12 +37,6 @@ results_csv_path: str = "results/results_table.csv"
 
 
 
-
-
-
-
-
-
 def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
     """
     Parameters
