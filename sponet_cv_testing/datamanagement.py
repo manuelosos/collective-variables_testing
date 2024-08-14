@@ -38,10 +38,17 @@ results_csv_path: str = "results/results_table.csv"
 
 
 def archive_run_result(source: str) -> None:
+
     with open(f"{source}parameters.json", "r") as target_file:
         parameters: dict = json.load(target_file)
 
     run_id: str = str(parameters["run_id"])
+
+    file_list: list[str] = os.listdir(source)
+    if "run_finished.txt" not in file_list:
+        print(f"Run {run_id} not finished! Run will not be archived.")
+        return
+
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic_model: str = dynamic_parameters["model"]
@@ -64,14 +71,8 @@ def archive_run_result(source: str) -> None:
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
-    file_list: list[str] = os.listdir(source)
-    if "run_finished.txt" in file_list:
-        finished = True
-        dimension_estimate = rm.get_dimension_estimate(source)[-1]
-
-    else:
-        finished = False
-        dimension_estimate = np.nan
+    finished = True
+    dimension_estimate = rm.get_dimension_estimate(source)[-1]
 
     results = read_data_csv()
 
