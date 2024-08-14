@@ -8,7 +8,7 @@
       <excludeFolder url="file://$MODULE_DIR$/runfiles" />
       <excludeFolder url="file://$MODULE_DIR$/tmp_results" />
       <excludeFolder url="file://$MODULE_DIR$/data" />
-      <excludeFolder url="file://$MODULE_DIR$/test_data" />
+      <excludeFolder url="file://$MODULE_DIR$/tests/test_data" />
     </content>
     <orderEntry type="jdk" jdkName="Poetry (sponet_cv_testing)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
