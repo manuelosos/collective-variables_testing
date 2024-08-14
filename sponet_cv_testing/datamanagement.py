@@ -3,38 +3,22 @@ import shutil
 import json
 import pandas as pd
 import os
+import sys
 import networkx as nx
 import datetime
 import numpy as np
-import csv
-import re
 from dataclasses import dataclass
 import sponet_cv_testing.resultmanagement as rm
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
-    data_path: str = "../data/"
+    #data_path: str = "../data/"
+    data_path: str = "../tests/test_data/"
     logger = logging.getLogger("cv_testing.datamanagement")
-    logger.setLevel(logging.DEBUG)
-
-    file_handler = logging.FileHandler(f"{data_path}data_log.log")
-    file_handler.setLevel(logging.DEBUG)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-
-    compact_formatter = logging.Formatter("%(asctime)s - %(message)s")
-    console_handler.setFormatter(compact_formatter)
-
-    complete_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(complete_formatter)
-
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
 else:
-    data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
-
-results_csv_path: str = "results/results_table.csv"
+    #data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
+    data_path = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/tests/test_data/"
+results_csv_path: str = "results/test_table.csv"  #"results/results_table.csv"
 
 
 def archive_run_result(source: str) -> None:
@@ -66,7 +50,7 @@ def archive_run_result(source: str) -> None:
 
     sampling_parameters: dict = parameters["simulation"]["sampling"]
     lag_time: float = sampling_parameters["lag_time"]
-    num_time_steps: int = sampling_parameters["num_timesteps"]
+    num_time_steps: int = sampling_parameters.get("num_timesteps",1)
     num_anchor_points: int = sampling_parameters["num_anchor_points"]
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
@@ -137,7 +121,7 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
             "network_model": str,
             "num_nodes": int,
             "lag_time": float,
-            "num_time_steps": bool,
+            "num_time_steps": int,
             "num_anchor_points": int,
             "num_samples_per_anchor": int,
             "cv_dim": int,
@@ -288,21 +272,8 @@ class RunResult:
 
 if __name__ == "__main__":
 
-    archive_dir("../tests/tmp_results/")
-
-    #df = read_data_csv()
-    #df = df.replace("[]", "")
-
-    #print(df["remarks"] == "[]")
-
-    #df.to_csv("test")
-
-    #df = read_data_csv()
-
-    #print(df.columns)
-    #df[df["num_anchor_points"] == 2000].to_csv("new_data.csv")
 
 
+    archive_dir("../tmp_results/")
 
-    #print(df["remarks"])
-# TODO Erfolgreiche Reruns zulassen
+
