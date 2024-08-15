@@ -12,8 +12,8 @@ import sponet_cv_testing.resultmanagement as rm
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
-    #data_path: str = "../data/"
-    data_path: str = "../tests/test_data/"
+    data_path: str = "../data/"
+    #data_path: str = "../tests/test_data/"
     logger = logging.getLogger("cv_testing.datamanagement")
 else:
     data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
@@ -55,7 +55,7 @@ def archive_run_result(source: str) -> None:
     num_samples_per_anchor: int = sampling_parameters["num_samples_per_anchor"]
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
-    finished = True
+
     dimension_estimate = rm.get_dimension_estimate(source)[-1]
 
     results = read_data_csv()
@@ -82,6 +82,7 @@ def archive_run_result(source: str) -> None:
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_time_steps,
         num_anchor_points, num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
 
+    return
     if run_id in results.index:
         shutil.rmtree(f"{data_path}results/{run_id}/")
 
@@ -274,6 +275,6 @@ if __name__ == "__main__":
 
 
 
-    archive_dir("../tmp_results/")
+    archive_dir("../tests/tmp_results_2/")
 
 

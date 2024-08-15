@@ -149,8 +149,8 @@ Allowed network models:
 
 ##### Results
 
-The results of each run will be saved in an individual folder. The folder is located in the path specified in the 
-command line argument. The folder is named after the run_id. 
+The results of each run will be saved in an individual folder. 
+The folder will be named with the run_id and is located in the path specified by command line argument. 
 The following quantities are saved.
 
 - **network_anchor_points** 

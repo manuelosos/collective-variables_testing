@@ -3,6 +3,10 @@ import logging
 import numba
 import json
 import os
+import argparse
+
+
+
 
 
 from sponet_cv_testing.runmanagement import get_runfiles, run_queue
@@ -27,6 +31,25 @@ complete_file_handler.setFormatter(complete_formatter)
 logger.addHandler(complete_file_handler)
 logger.addHandler(console_handler)
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--run", "--runfilepath",
+                    help="Path to the dir where the runfiles are located.")
+parser.add_argument("--res", "--resultpath",
+                    help="Path to the dir where the results will be saved.")
+parser.add_argument("--networkpath",
+                    help="Path to the dir where the networks are saved.")
+parser.add_argument("--nt", "numberthreads",
+                    type=int,
+                    help="Max number of threads that will be available for "
+                         "computation.")
+parser.add_argument("--delete_runfile_after_execution",
+                    action="store_true", help="If specified, the runfiles will be deleted "
+                                              "from the runfile folder after sucessfull execution")
+parser.add_argument("--error_exit",
+                    action="store_true",
+                    help="Path to the dir where the runfiles are located.")
+args = parser.parse_args()
+
 
 def setup() -> tuple[dict, dict]:
     with open("CONFIG.json", "r") as file:
@@ -35,7 +58,7 @@ def setup() -> tuple[dict, dict]:
     numba.set_num_threads(config["number_of_threads"])
     cpu_count = os.cpu_count()
 
-    misc_data: dict = {"device": config["device"],
+    misc_data: dict = {"device": config.get("device", "unknown"),
                        "number of numba threads": config["number_of_threads"],
                        "cpu count": cpu_count}
 
@@ -59,19 +82,32 @@ def main() -> None:
     config, misc_data = setup()
 
     args = sys.argv[1:]
-    queue_path: str = args[0]
-    work_dir_path: str = args[1]
+    if len(args) > 0:
+        # Path arguments will be taken from command line args
+        runfile_path = args[0]
+        result_path = args[1]
+    else:
+        runfile_path = config.get("runfile_path", None)
+        if runfile_path is None:
+            raise ValueError("No runfile path provided in config")
+        result_path = config.get("result_path", None)
+        if result_path is None:
+            raise ValueError("No result path provided in config")
+
+
+
+
 
     if len(args) > 2:
         network_dir_path = args[2]
     else:
         network_dir_path = config.get("network_dir_path", None)
 
-    run_files_list: list[dict] = get_runfiles(queue_path)
+    run_files_list: list[dict] = get_runfiles(runfile_path)
 
     run_queue(
         run_files_list,
-        work_dir_path,
+        result_path,
         network_dir_path,
         exit_after_error=config["exit_after_error"],
         misc_data=misc_data)
