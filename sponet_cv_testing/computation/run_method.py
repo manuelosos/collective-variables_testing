@@ -168,3 +168,6 @@ def linear_regression(
     xi_cvs_weighted = np.array(xi_cvs_weighted)
 
     return arr_alphas, arr_colors, xi_cvs, arr_alphas_weighted, arr_colors_weighted, xi_cvs_weighted
+
+
+

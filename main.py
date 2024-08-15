@@ -32,23 +32,25 @@ logger.addHandler(complete_file_handler)
 logger.addHandler(console_handler)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--run", "--runfilepath",
-                    help="Path to the dir where the runfiles are located.")
-parser.add_argument("--res", "--resultpath",
-                    help="Path to the dir where the results will be saved.")
-parser.add_argument("--networkpath",
-                    help="Path to the dir where the networks are saved.")
-parser.add_argument("--nt", "numberthreads",
+parser.add_argument("--run", "--runfile_path",
+                    help="Path to the directory where the runfiles are located.")
+parser.add_argument("--res", "--result_path",
+                    help="Path to the directory where the results will be saved.")
+parser.add_argument("--network_path",
+                    help="Path to the directory where the networks are located.")
+parser.add_argument("--nt", "num_threads",
                     type=int,
                     help="Max number of threads that will be available for "
                          "computation.")
-parser.add_argument("--delete_runfile_after_execution",
-                    action="store_true", help="If specified, the runfiles will be deleted "
-                                              "from the runfile folder after sucessfull execution")
+parser.add_argument("--delete_runfile",
+                    action="store_true",
+                    help="If specified, runfiles will be deleted from the runfile folder after successful execution")
 parser.add_argument("--error_exit",
                     action="store_true",
                     help="Path to the dir where the runfiles are located.")
-args = parser.parse_args()
+parser.add_argument("--device",
+                    help="Device name that will be saved in the metadata.")
+
 
 
 def setup() -> tuple[dict, dict]:
@@ -78,6 +80,9 @@ def main() -> None:
      Path to a directory where the networks are saved.
     """
     logging.info("Started main.py")
+
+    args = parser.parse_args()
+
 
     config, misc_data = setup()
 
