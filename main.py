@@ -90,7 +90,6 @@ def main() -> None:
     if args.result_path: result_path = args.result_path
     else: result_path = config.get("result_path", None)
     if not result_path: raise ValueError("No result path specified.")
-
     if args.network_path: network_path = args.network_path
     else: network_path = config.get("network_path", None)
     if network_path is None: raise ValueError("No network path specified.")
@@ -106,8 +105,8 @@ def main() -> None:
     if args.error_exit: error_exit = True
     else: error_exit = config.get("error_exit", False)
 
-    if args.overwrite_results: overwrite_result = True
-    else: overwrite_result = config.get("overwrite_result", False)
+    if args.overwrite_results: overwrite_results = True
+    else: overwrite_results = config.get("overwrite_results", False)
 
     if args.device: device = args.device
     else: device = config.get("device", "unknown")
@@ -124,7 +123,7 @@ def main() -> None:
         exit_after_error=error_exit,
         delete_runfiles=delete_runfile,
         misc_data=misc_data,
-        overwrite_results=overwrite_result)
+        overwrite_results=overwrite_results)
 
     return
 
