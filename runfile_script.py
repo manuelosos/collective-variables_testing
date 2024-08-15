@@ -294,7 +294,7 @@ def create_runfiles(
 
         # In order to compare with runs created in the same batch,
         # every run will be added as a dummy entry which will not be saved.
-        df.loc[run["run_id"]] = _create_dummy_entry(run)
+        #df.loc[run["run_id"]] = _create_dummy_entry(run)
 
         runfiles.append(run)
 
@@ -368,7 +368,7 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
     with open(f"{path}{timestamp}_param_array.txt", "a") as file:
         for run in runfiles:
             run_id = run["run_id"]
-            file.write(f"runfiles/{run_id}.json results\n")
+            file.write(f"-run runfiles/{run_id}.json \n")
     return
 
 
