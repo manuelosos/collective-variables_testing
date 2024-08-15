@@ -1,11 +1,15 @@
 import json
 import os
+import shutil
 import datetime as dt
 import numpy as np
 import networkx as nx
 
 
-def create_result_dir(path: str, run_parameters: dict, network: nx.Graph) -> str:
+def create_result_dir(path: str,
+                      run_parameters: dict,
+                      network: nx.Graph,
+                      overwrite: bool=False) -> str:
     """Creates a directory in the specified path and creates some metadata files.
 
     Parameters:
@@ -17,6 +21,10 @@ def create_result_dir(path: str, run_parameters: dict, network: nx.Graph) -> str
     """
     run_id: str = run_parameters["run_id"]
     run_folder_path: str = f"{path}/{run_id}/"
+
+    if os.path.isdir(run_folder_path) and overwrite:
+        shutil.rmtree(run_folder_path)
+
     os.mkdir(run_folder_path)
     os.mkdir(f"{run_folder_path}misc_data/")
 
