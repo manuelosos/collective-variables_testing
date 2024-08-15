@@ -15,10 +15,12 @@ logger = logging.getLogger("testpipeline.runmanagement")
 
 
 def run_queue(
-        run_files: list[dict],
+        run_file_path: str,
         save_path: str,
         network_dir_path: str | None = None,
         exit_after_error: bool = False,
+        delete_runfiles: bool = False,
+        overwrite_results: bool = False,
         misc_data: dict = None
 ) -> None:
     """
@@ -26,7 +28,7 @@ def run_queue(
 
     Parameters
     ----------
-    run_files : (list[dict])
+    run_file_path : (str)
         A list of dictionaries that contain the parameters for the tests.
 
     save_path : (str)
@@ -40,6 +42,9 @@ def run_queue(
         Set to true if the program should exit with system.exit(1) after an error. Default is False
         Set to true if you want to compute single file runs on cluster.
 
+    delete_runfiles : (bool)
+        Set to true if the runfiles should be deleted after successful computation of the corresponding run.
+
     misc_data : (dict)
         A dictionary consisting of additional data that will be saved in misc_data.txt in save_path.
 
@@ -47,6 +52,8 @@ def run_queue(
 
     Returns None
     """
+
+    run_files = get_runfiles(run_file_path)
 
     run_times: list[float] = []
     run_ids: list[str] = []
@@ -62,7 +69,7 @@ def run_queue(
 
         network = setup_network(network_parameters, network_dir_path)
 
-        result_path: str = rm.create_result_dir(save_path, run_parameters, network)
+        result_path: str = rm.create_result_dir(save_path, run_parameters, network, overwrite_results)
 
         rm.write_metadata(result_path, misc_data)
 
@@ -88,6 +95,10 @@ def run_queue(
             run_ids.append(run_id)
 
             rm.create_finished_file(result_path, run_id)
+
+            if delete_runfiles:
+                delete_runfile(run_file_path, run_id)
+
             logger.debug("run_finished file created.")
 
     logger.info(f"Finished runs : {run_ids} in {dt.timedelta(seconds=sum(run_times))}\n\n")
@@ -128,6 +139,21 @@ def get_runfiles(path: str) -> list[dict]:
         raise FileNotFoundError(f"Path {path} is not valid!")
 
     return run_parameters
+
+
+def delete_runfile(path: str, run_id: str) -> None:
+    if path.endswith('/'):
+        files = os.listdir(path)
+        for file in files:
+            if file.endswith(".json"):
+                with open(f"{path}{file}", "r") as target_file:
+                    this_run_id = json.load(target_file)["run_id"]
+                if this_run_id == run_id:
+                    os.remove(f"{path}{file}")
+    elif path.endswith(".json"):
+        os.remove(path)
+
+    return
 
 
 def generate_network(network_parameters: dict) -> nx.Graph:

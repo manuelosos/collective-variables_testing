@@ -31,40 +31,37 @@ complete_file_handler.setFormatter(complete_formatter)
 logger.addHandler(complete_file_handler)
 logger.addHandler(console_handler)
 
+
+# Setting up cli arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("--run", "--runfile_path",
+parser.add_argument("-run", "--runfile_path",
                     help="Path to the directory where the runfiles are located.")
-parser.add_argument("--res", "--result_path",
+
+parser.add_argument("-res", "--result_path",
                     help="Path to the directory where the results will be saved.")
-parser.add_argument("--network_path",
+
+parser.add_argument("-net", "--network_path",
                     help="Path to the directory where the networks are located.")
-parser.add_argument("--nt", "num_threads",
+
+parser.add_argument("-num_t", "--num_threads",
                     type=int,
                     help="Max number of threads that will be available for "
                          "computation.")
+
 parser.add_argument("--delete_runfile",
                     action="store_true",
                     help="If specified, runfiles will be deleted from the runfile folder after successful execution")
+
 parser.add_argument("--error_exit",
                     action="store_true",
                     help="Path to the dir where the runfiles are located.")
+
+parser.add_argument("--overwrite_results",
+                    action="store_true",
+                    help="If set to true, existing results in result_path will be overwritten if the run_id is equal.")
+
 parser.add_argument("--device",
                     help="Device name that will be saved in the metadata.")
-
-
-
-def setup() -> tuple[dict, dict]:
-    with open("CONFIG.json", "r") as file:
-        config = json.load(file)
-
-    numba.set_num_threads(config["number_of_threads"])
-    cpu_count = os.cpu_count()
-
-    misc_data: dict = {"device": config.get("device", "unknown"),
-                       "number of numba threads": config["number_of_threads"],
-                       "cpu count": cpu_count}
-
-    return config, misc_data
 
 
 def main() -> None:
@@ -81,41 +78,53 @@ def main() -> None:
     """
     logging.info("Started main.py")
 
+    with open("CONFIG.json", "r") as file:
+        config = json.load(file)
+
     args = parser.parse_args()
 
+    if args.runfile_path: runfile_path = args.runfile_path
+    else: runfile_path = config.get("runfile_path", None)
+    if not runfile_path: raise ValueError("No runfile path specified.")
 
-    config, misc_data = setup()
+    if args.result_path: result_path = args.result_path
+    else: result_path = config.get("result_path", None)
+    if not result_path: raise ValueError("No result path specified.")
 
-    args = sys.argv[1:]
-    if len(args) > 0:
-        # Path arguments will be taken from command line args
-        runfile_path = args[0]
-        result_path = args[1]
-    else:
-        runfile_path = config.get("runfile_path", None)
-        if runfile_path is None:
-            raise ValueError("No runfile path provided in config")
-        result_path = config.get("result_path", None)
-        if result_path is None:
-            raise ValueError("No result path provided in config")
+    if args.network_path: network_path = args.network_path
+    else: network_path = config.get("network_path", None)
+    if network_path is None: raise ValueError("No network path specified.")
 
+    if args.num_threads: num_threads = args.num_threads
+    else: num_threads = config.get("num_threads", None)
+    if num_threads:
+        numba.set_num_threads(num_threads)
 
+    if args.delete_runfile: delete_runfile = True
+    else: delete_runfile = config.get("delete_runfile", False)
 
+    if args.error_exit: error_exit = True
+    else: error_exit = config.get("error_exit", False)
 
+    if args.overwrite_results: overwrite_result = True
+    else: overwrite_result = config.get("overwrite_result", False)
 
-    if len(args) > 2:
-        network_dir_path = args[2]
-    else:
-        network_dir_path = config.get("network_dir_path", None)
+    if args.device: device = args.device
+    else: device = config.get("device", "unknown")
 
-    run_files_list: list[dict] = get_runfiles(runfile_path)
+    misc_data: dict = {"device": device,
+                       "number of numba threads": num_threads,
+                       "cpu count": os.cpu_count()}
+
 
     run_queue(
-        run_files_list,
+        runfile_path,
         result_path,
-        network_dir_path,
-        exit_after_error=config["exit_after_error"],
-        misc_data=misc_data)
+        network_path,
+        exit_after_error=error_exit,
+        delete_runfiles=delete_runfile,
+        misc_data=misc_data,
+        overwrite_results=overwrite_result)
 
     return
 
