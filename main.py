@@ -90,6 +90,7 @@ def main() -> None:
     if args.result_path: result_path = args.result_path
     else: result_path = config.get("result_path", None)
     if not result_path: raise ValueError("No result path specified.")
+
     if args.network_path: network_path = args.network_path
     else: network_path = config.get("network_path", None)
     if network_path is None: raise ValueError("No network path specified.")
@@ -117,7 +118,7 @@ def main() -> None:
     misc_data: dict = {"device": device,
                        "number of numba threads": num_threads,
                        "cpu count": os.cpu_count(),
-                       "delete samples": delete_samples}
+                       "delete_samples": delete_samples}
 
 
     run_queue(

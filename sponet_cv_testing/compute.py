@@ -91,8 +91,12 @@ def compute_run(network: nx.Graph,
             np.save(f"{samples_path}network_dynamics_samples", samples)
 
         logger.info(f"Computing {num_time_steps} diffusion maps.")
-        (diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates,
-         distance_matrices_compute_times) = (
+        (diffusion_maps,
+         diffusion_maps_eigenvalues,
+         bandwidth_diffusion_maps,
+         dimension_estimates,
+         distance_matrices_compute_times
+         ) = (
             approximate_transition_manifolds(samples,
                                              num_nodes,
                                              num_coordinates,

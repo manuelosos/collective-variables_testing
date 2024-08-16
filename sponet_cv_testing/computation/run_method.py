@@ -101,7 +101,9 @@ def approximate_transition_manifolds(
     logger.debug(f"Computing {num_time_steps} distance_matrices "
                  f"with triangle speedup = {distance_matrix_triangle_inequality_speedup}.")
     bandwidth_transitions = (num_nodes / 2) ** 0.5
-    distance_matrices, distance_matrix_compute_times = (
+    (distance_matrices,
+     distance_matrix_compute_times
+     ) = (
         compute_distance_matrices(samples,
                                   bandwidth_transitions,
                                   distance_matrix_triangle_inequality_speedup)
