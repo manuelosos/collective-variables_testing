@@ -106,6 +106,13 @@ def get_anchor_points(result_dir_path: str) -> np.ndarray:
     return np.load(f"{result_dir_path}samples/network_anchor_points.npy")
 
 
+def get_network_dynamics_samples(result_dir_path: str) -> np.ndarray:
+    version = get_result_format(result_dir_path)
+    if version == "old":
+        return np.load(f"{result_dir_path}x_data.npz")["x_samples"]
+    return np.load(f"{result_dir_path}samples/network_dynamics_samples.npy")
+
+
 def get_cv_coefficients(result_dir_path: str) -> np.ndarray:
     version = get_result_format(result_dir_path)
     if version == "old":
