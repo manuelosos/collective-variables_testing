@@ -18,6 +18,7 @@ def run_queue(
         run_file_path: str,
         save_path: str,
         network_dir_path: str | None = None,
+        delete_samples: bool = False,
         exit_after_error: bool = False,
         delete_runfiles: bool = False,
         overwrite_results: bool = False,

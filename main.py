@@ -43,6 +43,11 @@ parser.add_argument("-num_t", "--num_threads",
                     help="Max number of threads that will be available for "
                          "computation.")
 
+parser.add_argument("--delete_samples",
+                    action="store_true",
+                    help="If set, the samples from the network_dynamics will not be saved. "
+                         "The dynamics samples utilize the most space on disc.")
+
 parser.add_argument("--delete_runfile",
                     action="store_true",
                     help="If specified, runfiles will be deleted from the runfile folder after successful execution")
@@ -95,6 +100,9 @@ def main() -> None:
     if num_threads:
         numba.set_num_threads(num_threads)
 
+    if args.delete_samples: delete_samples = True
+    else: delete_samples = config.get("delete_samples", False)
+
     if args.delete_runfile: delete_runfile = True
     else: delete_runfile = config.get("delete_runfile", False)
 
@@ -116,8 +124,9 @@ def main() -> None:
         runfile_path,
         result_path,
         network_path,
-        exit_after_error=error_exit,
+        delete_samples=delete_samples,
         delete_runfiles=delete_runfile,
+        exit_after_error=error_exit,
         misc_data=misc_data,
         overwrite_results=overwrite_results)
 

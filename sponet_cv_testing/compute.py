@@ -8,7 +8,10 @@ import datetime as dt
 logger = logging.getLogger("testpipeline.compute")
 
 
-def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
+def compute_run(network: nx.Graph,
+                parameters: dict,
+                result_path: str,
+                delete_samples: bool = False) -> None:
     """
     High level function for computing a cv run. This function calls individual computation function and handles
     parameter unpacking and result saving.
@@ -20,6 +23,8 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
         See runfile_doc for more information.
     result_path : str
         Path to the directory where results will be saved.
+    delete_samples : bool
+        If set to True, the samples will not be saved. Samples make up the majority of storage usage.
     Returns None
 
     """
@@ -81,8 +86,9 @@ def compute_run(network: nx.Graph, parameters: dict, result_path: str) -> None:
                                  lag_time,
                                  num_time_steps,
                                  num_samples_per_anchor
-                                 )
-        np.save(f"{samples_path}network_dynamics_samples", samples)
+                                 ).astype(state_type)
+        if not delete_samples:
+            np.save(f"{samples_path}network_dynamics_samples", samples)
 
         logger.info(f"Computing {num_time_steps} diffusion maps.")
         (diffusion_maps, diffusion_maps_eigenvalues, bandwidth_diffusion_maps, dimension_estimates,

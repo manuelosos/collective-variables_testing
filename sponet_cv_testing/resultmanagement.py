@@ -85,9 +85,6 @@ def get_result_format(result_dir_path: str) -> str:
     return "new"
 
 
-
-
-
 def get_dimension_estimate(result_dir_path: str) -> np.ndarray:
     version = get_result_format(result_dir_path)
     if version == "old":
