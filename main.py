@@ -4,12 +4,7 @@ import numba
 import json
 import os
 import argparse
-
-
-
-
-
-from sponet_cv_testing.runmanagement import get_runfiles, run_queue
+from sponet_cv_testing.runmanagement import run_queue
 
 logger = logging.getLogger("testpipeline")
 logger.setLevel(logging.DEBUG)
