@@ -592,7 +592,10 @@ def update_3d_coordinates_plot(selected_run, time_step, dropdown_x, dropdown_y, 
 
     xi = rm.get_transition_manifold(file_path)[time_step]
     x_anchor = rm.get_anchor_points(file_path)
-    network = rm.open_network(file_path, "network")
+    network = rm.open_network(file_path, "network")#
+
+    print(x_anchor.size)
+    print(xi.size)
 
     color_options, colors = calc_colors(x_anchor, network)
     fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
@@ -686,8 +689,6 @@ def update_cv_network_plots(selected_run: str, time_step: int, cv_type: str, sca
     alphas = cv_optim
 
     degrees = np.array(network.degree)[:, 1:].flatten().astype(int)
-
-    print(len(degrees))
 
     if scaling == "linear":
         size_adjustment = np.vectorize(lambda x: 0.5*x+8)
@@ -845,16 +846,6 @@ def update_cv_plots_on_click(network_click, xixi_click, network_fig, xixi_fig):
 
     return no_update, xixi_fig_patch
 
-
-
-
-
-
-
-
-
-
-    return
 
 
 @callback(

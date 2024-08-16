@@ -117,7 +117,8 @@ def main() -> None:
 
     misc_data: dict = {"device": device,
                        "number of numba threads": num_threads,
-                       "cpu count": os.cpu_count()}
+                       "cpu count": os.cpu_count(),
+                       "delete_samples": delete_samples}
 
 
     run_queue(

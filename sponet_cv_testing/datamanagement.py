@@ -33,6 +33,8 @@ def archive_run_result(source: str) -> None:
         print(f"Run {run_id} not finished! Run will not be archived.")
         return
 
+    finished = True
+
 
     dynamic_parameters: dict = parameters["dynamic"]
     dynamic_model: str = dynamic_parameters["model"]
@@ -82,7 +84,7 @@ def archive_run_result(source: str) -> None:
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_time_steps,
         num_anchor_points, num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
 
-    return
+
     if run_id in results.index:
         shutil.rmtree(f"{data_path}results/{run_id}/")
 
@@ -275,6 +277,6 @@ if __name__ == "__main__":
 
 
 
-    archive_dir("../tests/tmp_results_2/")
+    archive_dir("../tests/tmp_results/")
 
 

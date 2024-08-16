@@ -207,7 +207,7 @@ def _numba_dist_matrix_gaussian_kernel(
 
 @njit(parallel=False)
 def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
-        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=10e-4
+        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=1e-3
 ) -> tuple[np.ndarray, np.ndarray]:
     """
         Parameters

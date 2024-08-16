@@ -203,11 +203,11 @@ def create_runfiles(
 
     dynamic = "CNVM"
     num_states = 2
-    r_ab_l = [1.5]
+    r_ab_l = [1]
     r_ba_l = [1]
 
-    r_tilde_ab_l = [0.02]
-    r_tilde_ba_l = [0.02]
+    r_tilde_ab_l = [0.01]
+    r_tilde_ba_l = [0.01]
 
     network_model = "albert-barabasi"
     num_nodes = 500
@@ -215,11 +215,11 @@ def create_runfiles(
     triad_probabilities = [1]
     if network_model == "albert-barabasi": assert(len(triad_probabilities) == 1)
 
-    lag_time_l = [5]
-    num_anchor_points_l = [2000]
-    num_samples_per_anchor_l = [300]
+    lag_time_l = [2]
+    num_anchor_points_l = [1000]
+    num_samples_per_anchor_l = [150]
     triangle_speedups = [True, False]
-    num_timesteps_l = [1, 5, 10]
+    num_timesteps_l = [10]
 
     num_runs_per_set = 3
 
