@@ -1,9 +1,15 @@
 import numpy as np
-import sponet_cv_testing.resultmanagement as rm
-from sponet_cv_testing.computation.run_method import *
+import networkx as nx
 import logging
-import os
-import datetime as dt
+
+import sponet_cv_testing.resultmanagement as rm
+from sponet_cv_testing.computation.run_method import (
+    setup_dynamic,
+    create_anchor_points,
+    sample_anchors,
+    approximate_transition_manifolds,
+    linear_regression
+)
 
 logger = logging.getLogger("testpipeline.compute")
 
@@ -11,7 +17,7 @@ logger = logging.getLogger("testpipeline.compute")
 def compute_run(network: nx.Graph,
                 parameters: dict,
                 result_path: str,
-                delete_samples: bool = False) -> None:
+                save_samples: bool = True) -> None:
     """
     High level function for computing a cv run. This function calls individual computation function and handles
     parameter unpacking and result saving.
@@ -19,13 +25,18 @@ def compute_run(network: nx.Graph,
     Parameters
     ----------
     network : nx.Graph
+        Network on which the dynamics will be simulated.
     parameters : dict
-        See runfile_doc for more information.
+        Parameters in dict format as specified in runfile_doc.md
     result_path : str
         Path to the directory where results will be saved.
-    delete_samples : bool
-        If set to True, the samples will not be saved. Samples make up the majority of storage usage.
-    Returns None
+    save_samples : bool
+        If set to False, the samples of the dynamics used for computing the transition manifold will not be saved.
+        These samples make up the majority of the disk space.
+
+    Returns
+    -------
+    None
 
     """
 
@@ -55,15 +66,6 @@ def compute_run(network: nx.Graph,
         num_anchor_points = sampling_parameters["num_anchor_points"]
         num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
 
-        samples_path = f"{result_path}samples/"
-        os.makedirs(samples_path, exist_ok=True)
-        tm_path = f"{result_path}transition_manifolds/"
-        os.makedirs(tm_path, exist_ok=True)
-        cv_path = f"{result_path}collective_variables/"
-        os.makedirs(cv_path, exist_ok=True)
-        misc_path = f"{result_path}misc_data/"
-        os.makedirs(misc_path, exist_ok=True)
-
         if dynamic.num_opinions <= 256:
             state_type = np.uint8
         elif dynamic.num_opinions <= 65535:
@@ -76,9 +78,9 @@ def compute_run(network: nx.Graph,
                                        num_anchor_points,
                                        lag_time,
                                        short_integration_time
-                                       ).astype(state_type)
-        np.save(f"{samples_path}network_anchor_points", anchors)
+                                       )
 
+        rm.save_anchor_points(result_path, anchors.astype(state_type))
         logger.info(f"Sampling {num_samples_per_anchor} samples per {num_anchor_points} "
                     f"with {num_time_steps} time steps.")
         samples = sample_anchors(dynamic,
@@ -86,9 +88,9 @@ def compute_run(network: nx.Graph,
                                  lag_time,
                                  num_time_steps,
                                  num_samples_per_anchor
-                                 ).astype(state_type)
-        if not delete_samples:
-            np.save(f"{samples_path}network_dynamics_samples", samples)
+                                 )
+        if save_samples:
+            rm.save_network_dynamics_samples(result_path, samples.astype(state_type))
 
         logger.info(f"Computing {num_time_steps} diffusion maps.")
         (diffusion_maps,
@@ -102,11 +104,12 @@ def compute_run(network: nx.Graph,
                                              num_coordinates,
                                              triangle_speedup)
         )
-        np.save(f"{tm_path}transition_manifolds", diffusion_maps)
-        np.save(f"{tm_path}diffusion_maps_eigenvalues", diffusion_maps_eigenvalues)
-        np.save(f"{tm_path}intrinsic_dimension_estimates", dimension_estimates)
+        rm.save_transition_manifold(result_path, diffusion_maps)
+        rm.save_diffusion_maps_eigenvalues(result_path, diffusion_maps_eigenvalues)
+        rm.save_dimension_estimate(result_path, dimension_estimates)
 
-        rm.save_compute_times(f"{misc_path}distance_matrices_compute_time",
+
+        rm.save_compute_times(result_path,
                               distance_matrices_compute_times,
                               f"triangle_inequality_speedup={triangle_speedup}")
 
@@ -116,12 +119,14 @@ def compute_run(network: nx.Graph,
                               network,
                               num_opinions)
         )
-        np.save(f"{cv_path}cv_coefficients", cv_coefficients)
-        np.save(f"{cv_path}cv_samples", cv_samples)
-        np.save(f"{cv_path}cv", cv)
-        np.save(f"{cv_path}cv_coefficients_weighted", cv_coefficients)
-        np.save(f"{cv_path}cv_samples_weighted", cv_samples)
-        np.save(f"{cv_path}cv_weighted", cv)
+
+        rm.save_cv_coefficients(result_path, cv_coefficients)
+        rm.save_cv_samples(result_path, cv_samples)
+        rm.save_cv(result_path, cv)
+
+        rm.save_cv_coefficients_weighted(result_path, cv_coefficients_weighted)
+        rm.save_cv_samples_weighted(result_path, cv_samples_weighted)
+        rm.save_cv_weighted(result_path, cv_weighted)
 
     except Exception as e:
         logger.debug(str(e))

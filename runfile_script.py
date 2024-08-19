@@ -368,7 +368,7 @@ def make_cluster_jobarray(path: str, runfiles: list[dict]) -> None:
     with open(f"{path}{timestamp}_param_array.txt", "a") as file:
         for run in runfiles:
             run_id = run["run_id"]
-            file.write(f"-run runfiles/{run_id}.json \n")
+            file.write(f"-run runfiles/{run_id}.json --delete_samples\n")
     return
 
 
