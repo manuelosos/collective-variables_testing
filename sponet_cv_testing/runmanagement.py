@@ -75,7 +75,10 @@ def run_queue(
         rm.write_metadata(result_path, misc_data)
 
         try:
-            compute_run(network, run_parameters, result_path)
+            compute_run(network,
+                        run_parameters,
+                        result_path,
+                        delete_samples=delete_samples)
 
         except Exception as err:
             end_time = time.time()

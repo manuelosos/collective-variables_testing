@@ -66,15 +66,29 @@ parser.add_argument("--device",
 
 def main() -> None:
     """
-    Starts the runqueue from the command line.
-    args:
-    queue_path: str
-        Path to the runfiles. Path can lead to a folder in which all runfiles are located. In this case path must end
-        with "/". Path can also lead to a single json file. In this case path must end with ".json"
-    result_dir_path: str
-        Path to a directory where the result-directories for each run are saved.
-    network_dir_path: str (optional)
-     Path to a directory where the networks are saved.
+    Starts the runqueue. Arguments can be passed via the command line or can be specified in the CONFIG.json.
+    Command line arguments have priority over CONFIG.json arguments.
+
+    Parameters
+    ----------
+    runfile_path : str
+        Path to the runfiles. Path can lead to a folder in which all runfiles are located.
+        In this case path must end with "/".
+        Path can also lead to a single json file.
+        In this case path must end with ".json"
+    result_dir_path : str
+        Path to a directory where the results will be saved.
+    network_dir_path : str
+        Path to a directory from where the networks are loaded.
+    num_threads : int, optional
+        Number of Numba generated threads that are available for computation.
+        If not set, the number of available threads will be chosen automatically by the Numba library.
+        If Hyper Threading (or a similar concept) is enabled on the device, Numba may choose a higher number of threads
+        then there are physical cores.
+    delete_samples : bool
+
+
+
     """
     logging.info("Started main.py")
 
