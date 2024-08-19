@@ -22,6 +22,7 @@ def setup_dynamic(
         dynamic_parameters: dict,
         network: nx.Graph
 ) -> CNVMParameters | CNTMParameters:
+
     num_states: int = dynamic_parameters["num_states"]
     rates: dict = dynamic_parameters["rates"]
     model: str = dynamic_parameters["model"]
@@ -58,6 +59,7 @@ def create_anchor_points(
         lag_time: float,
         short_integration_time: float = -1,
 ) -> np.ndarray:
+
     if short_integration_time < 0:
         # Set short_integration_time dependent on maximal rate
         max_rate = max(np.max(dynamic.r), np.max(dynamic.r_tilde))
@@ -84,6 +86,7 @@ def sample_anchors(
         num_time_steps: int,
         num_samples_per_anchor: int
 ) -> np.ndarray:
+
     if num_time_steps < 1:
         num_time_steps = 1
     t, x_samples = sample_many_runs(dynamic, anchors, lag_time, num_time_steps + 1, num_samples_per_anchor)
@@ -98,6 +101,7 @@ def approximate_transition_manifolds(
         num_coordinates: int,
         distance_matrix_triangle_inequality_speedup: bool
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
     num_time_steps = samples.shape[2]
     logger.debug(f"Computing {num_time_steps} distance_matrices "
                  f"with triangle speedup = {distance_matrix_triangle_inequality_speedup}.")
@@ -122,6 +126,7 @@ def linear_regression(
         network: nx.Graph,
         num_opinions: int
 ):
+
     num_time_steps = transition_manifold_samples.shape[0]
     num_initial_states = transition_manifold_samples.shape[1]
     num_coordinates = transition_manifold_samples.shape[2]

@@ -102,7 +102,7 @@ def run_queue(
             compute_run(network,
                         run_parameters,
                         run_result_path,
-                        delete_samples=delete_samples)
+                        save_samples=not delete_samples)
 
         except Exception as err:
             end_time = time.time()
