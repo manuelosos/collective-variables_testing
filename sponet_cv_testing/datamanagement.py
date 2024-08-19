@@ -3,11 +3,9 @@ import shutil
 import json
 import pandas as pd
 import os
-import sys
 import networkx as nx
 import datetime
 import numpy as np
-from dataclasses import dataclass
 import sponet_cv_testing.resultmanagement as rm
 
 # global variables that should be changed if necessary
@@ -22,6 +20,7 @@ results_csv_path: str = "results/results_table.csv"
 
 
 def archive_run_result(source: str) -> None:
+    """Archives one single run result in the data table."""
 
     with open(f"{source}parameters.json", "r") as target_file:
         parameters: dict = json.load(target_file)
