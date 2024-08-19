@@ -173,6 +173,19 @@ def get_runfiles(path: str) -> list[dict]:
 
 
 def delete_runfile(path: str, run_id: str) -> None:
+    """
+    Searches for the runfile in path with the specified run_id and deletes it.
+
+    Parameters
+    ----------
+    path : str
+        Path to the folder containing the runfile with the specified run_id.
+    run_id : str
+        Run id if the run whose runfile should be deleted.
+    Returns
+    -------
+    None
+    """
     if path.endswith('/'):
         files = os.listdir(path)
         for file in files:
@@ -181,14 +194,54 @@ def delete_runfile(path: str, run_id: str) -> None:
                     this_run_id = json.load(target_file)["run_id"]
                 if this_run_id == run_id:
                     os.remove(f"{path}{file}")
+
     elif path.endswith(".json"):
         os.remove(path)
 
     return
 
 
+def setup_network(network_parameters: dict, network_dir_path: str) -> nx.Graph:
+    """
+    Sets up the network with the given parameters.
+
+    Parameters
+    ----------
+    network_parameters : dict
+        Network Parameters in dict format as specified in runfile_doc.md.
+        Depending on the parameters specified in network_parameters,
+        the network will be generated new or an existing one will be loaded.
+    network_dir_path : str
+        Path to where already existing networks are located.
+
+    Returns
+    -------
+        nx.Graph
+    """
+    generate_new: bool = network_parameters["generate_new"]
+
+    if generate_new is False:
+        network_id: str = network_parameters["network_id"]
+        network = rm.open_network(network_dir_path, network_id)
+    else:
+        network = generate_network(network_parameters)
+
+    return network
+
+
 def generate_network(network_parameters: dict) -> nx.Graph:
-    """Generates a new network with the given parameters."""
+    """
+    Generates a new network with the given parameters.
+
+    Parameters
+    ----------
+    network_parameters : dict
+        Parameters in dict format as specified in runfile_doc.md.
+
+    Returns
+    -------
+    nx.Graph
+    """
     model: str = network_parameters["model"]
     num_nodes: int = network_parameters["num_nodes"]
 
@@ -208,16 +261,7 @@ def generate_network(network_parameters: dict) -> nx.Graph:
     return network
 
 
-def setup_network(network_parameters: dict, network_dir_path: str) -> nx.Graph:
-    generate_new: bool = network_parameters["generate_new"]
 
-    if generate_new is False:
-        network_id: str = network_parameters["network_id"]
-        network = rm.open_network(network_dir_path, network_id)
-    else:
-        network = generate_network(network_parameters)
-
-    return network
 
 
 
