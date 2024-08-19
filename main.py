@@ -1,6 +1,5 @@
 import sys
 import logging
-import numba
 import json
 import os
 import argparse
@@ -66,29 +65,9 @@ parser.add_argument("--device",
 
 def main() -> None:
     """
-    Starts the runqueue. Arguments can be passed via the command line or can be specified in the CONFIG.json.
-    Command line arguments have priority over CONFIG.json arguments.
-
-    Parameters
-    ----------
-    runfile_path : str
-        Path to the runfiles. Path can lead to a folder in which all runfiles are located.
-        In this case path must end with "/".
-        Path can also lead to a single json file.
-        In this case path must end with ".json"
-    result_dir_path : str
-        Path to a directory where the results will be saved.
-    network_dir_path : str
-        Path to a directory from where the networks are loaded.
-    num_threads : int, optional
-        Number of Numba generated threads that are available for computation.
-        If not set, the number of available threads will be chosen automatically by the Numba library.
-        If Hyper Threading (or a similar concept) is enabled on the device, Numba may choose a higher number of threads
-        then there are physical cores.
-    delete_samples : bool
-
-
-
+    Starts the runqueue via the command line argument.
+    For a specification of the arguments, use the help option of the cli
+    or consider the docstring of runmanagement.run_queue.
     """
     logging.info("Started main.py")
 
@@ -111,8 +90,6 @@ def main() -> None:
 
     if args.num_threads: num_threads = args.num_threads
     else: num_threads = config.get("num_threads", None)
-    if num_threads:
-        numba.set_num_threads(num_threads)
 
     if args.delete_samples: delete_samples = True
     else: delete_samples = config.get("delete_samples", False)
@@ -139,9 +116,10 @@ def main() -> None:
         runfile_path,
         result_path,
         network_path,
+        num_threads= num_threads,
         delete_samples=delete_samples,
         delete_runfiles=delete_runfile,
-        exit_after_error=error_exit,
+        error_exit=error_exit,
         misc_data=misc_data,
         overwrite_results=overwrite_results)
 

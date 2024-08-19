@@ -207,7 +207,7 @@ def _numba_dist_matrix_gaussian_kernel(
 
 @njit(parallel=False)
 def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
-        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance=1e-3
+        x_samples: np.ndarray, sigma: float, triangle_speedup_tolerance: float =1e-3
 ) -> tuple[np.ndarray, np.ndarray]:
     """
         Parameters
@@ -219,7 +219,7 @@ def _numba_dist_matrix_gaussian_kernel_triangle_speedup(
         triangle_speedup_tolerance : float
             Tolerance for relative difference between lower and upper triangle inequality bound for applying the
             speedup.
-            Defaults to 10e-4.
+            Defaults to 1e-3.
 
         Returns
         -------

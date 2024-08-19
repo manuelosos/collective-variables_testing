@@ -4,6 +4,7 @@ from collections.abc import Iterable
 import networkx as nx
 import numpy as np
 import sponet.states
+from scipy.spatial import distance_matrix
 from sponet import CNVMParameters, CNTMParameters
 from sponet.multiprocessing import sample_many_runs
 
@@ -101,12 +102,9 @@ def approximate_transition_manifolds(
     logger.debug(f"Computing {num_time_steps} distance_matrices "
                  f"with triangle speedup = {distance_matrix_triangle_inequality_speedup}.")
     bandwidth_transitions = (num_nodes / 2) ** 0.5
-    (distance_matrices,
-     distance_matrix_compute_times
-     ) = (
-        compute_distance_matrices(samples,
-                                  bandwidth_transitions,
-                                  distance_matrix_triangle_inequality_speedup)
+
+    distance_matrices, distance_matrix_compute_times = (
+        compute_distance_matrices(samples, bandwidth_transitions, distance_matrix_triangle_inequality_speedup)
     )
 
     logger.debug(f"Computing {num_time_steps} diffusion maps.")

@@ -5,7 +5,7 @@ import logging
 import networkx as nx
 import sys
 import datetime as dt
-import numpy as np
+import numba
 
 from sponet import network_generator as ng
 from sponet_cv_testing.compute import compute_run
@@ -15,50 +15,74 @@ logger = logging.getLogger("testpipeline.runmanagement")
 
 
 def run_queue(
-        run_file_path: str,
-        save_path: str,
-        network_dir_path: str | None = None,
+        runfile_path: str,
+        result_path: str,
+        network_path: str | None = None,
+        num_threads: int | None = None,
         delete_samples: bool = False,
-        exit_after_error: bool = False,
+        error_exit: bool = False,
         delete_runfiles: bool = False,
         overwrite_results: bool = False,
         misc_data: dict = None
 ) -> None:
     """
-    Runs the tests specified in the runfiles. The results will be saved in save_path.
+    Runs the tests specified in the runfiles.
+
+    The runs are specified in .json files whose structure is described "in runfile_doc.md".
+    The results of the runs are saved in individual directories located in result_path.
+    The result directories will be named after the run_id of the corresponding run.
 
     Parameters
     ----------
-    run_file_path : (str)
-        A list of dictionaries that contain the parameters for the tests.
+    runfile_path : str
+        Path to the runfiles.
+        If only one run should be executed, path has to end with .json.
+        If multiple runs should be queued, path must lead to the directory which contains the runfiles.
 
-    save_path : (str)
-        The path to the folder where the results should be saved.
+    result_path : str
+        Path to a directory where the results will be saved.
 
-    network_dir_path : (str)
-        Path of directory where networks are saved that will be used for testing. Defaults to None. Only needs to be
-        specified if generate_new=False in runfile
+    network_path : str
+        Path to a directory from where the networks are loaded.
 
-    exit_after_error : (bool)
-        Set to true if the program should exit with system.exit(1) after an error. Default is False
-        Set to true if you want to compute single file runs on cluster.
+    num_threads : int, default=None
+        Number of Numba generated threads that are available for computation.
+        If not set, the number of available threads will be chosen automatically by the Numba library.
+        If Hyper Threading (or a similar concept) is enabled on the device, Numba may choose a higher number of threads
+        then there are physical cores.
 
-    delete_runfiles : (bool)
-        Set to true if the runfiles should be deleted after successful computation of the corresponding run.
+    delete_samples : bool, default=False
+        If set to True, the dynamics samples will not be saved in the results-directory.
+        Set this to true if you have limited disk space.
 
-    misc_data : (dict)
-        A dictionary consisting of additional data that will be saved in misc_data.txt in save_path.
+    delete_runfiles : bool, default=False
+        If set to True, the runfiles in the runfile folder will be deleted after successful execution.
 
-    The results will be saved in save_path in folders named by the run_id
+    error_exit : bool : bool, default=False
+        If set to True, the runqueue will exit with return value 1 after an error occurred.
+        This implies in extension, that runs that the runqueue will not continue after the error.
 
-    Returns None
+    overwrite_results : bool, default=False
+        Set to True to overwrite already existing results.
+        If not set to True, an Error will be raised if results with equal run_id already exist in the result_dir_path
+
+    misc_data : dict, default=None
+        Miscellaneous data that will be saved in the metadata of the run.
+
+    Returns
+    -------
+    None
+
     """
 
-    run_files = get_runfiles(run_file_path)
+    run_files = get_runfiles(runfile_path)
 
     run_times: list[float] = []
     run_ids: list[str] = []
     logger.info(f"Started run-queue with {len(run_files)} runs.")
+
+    if num_threads:
+        numba.set_num_threads(num_threads)
 
     for run_parameters in run_files:
 
@@ -68,40 +92,40 @@ def run_queue(
 
         network_parameters: dict = run_parameters["network"]
 
-        network = setup_network(network_parameters, network_dir_path)
+        network = setup_network(network_parameters, network_path)
 
-        result_path: str = rm.create_result_dir(save_path, run_parameters, network, overwrite_results)
+        run_result_path: str = rm.create_result_dir(result_path, run_parameters, network, overwrite_results)
 
-        rm.write_metadata(result_path, misc_data)
+        rm.write_metadata(run_result_path, misc_data)
 
         try:
             compute_run(network,
                         run_parameters,
-                        result_path,
+                        run_result_path,
                         delete_samples=delete_samples)
 
         except Exception as err:
             end_time = time.time()
             run_time = end_time - start_time
             logger.error(f"An Exception occurred in run: {run_id} after {run_time}\nException: {str(err)}\n")
-            with open(f"{result_path}ERROR.txt", "w") as file:
+            with open(f"{run_result_path}ERROR.txt", "w") as file:
                 file.write(str(err))
-            if exit_after_error:
+            if error_exit:
                 raise (err)
                 sys.exit(1)
         else:
             end_time = time.time()
             run_time = end_time - start_time
             run_times.append(run_time)
-            rm.write_metadata(result_path, {"run_time": dt.timedelta(seconds=run_time)})
+            rm.write_metadata(run_result_path, {"run_time": dt.timedelta(seconds=run_time)})
 
             logger.info(f"Finished run: {run_id} without Exceptions! in {run_times[-1]} seconds.\n")
             run_ids.append(run_id)
 
-            rm.create_finished_file(result_path, run_id)
+            rm.create_finished_file(run_result_path, run_id)
 
             if delete_runfiles:
-                delete_runfile(run_file_path, run_id)
+                delete_runfile(runfile_path, run_id)
 
             logger.debug("run_finished file created.")
 
@@ -112,37 +136,40 @@ def run_queue(
 def get_runfiles(path: str) -> list[dict]:
     """
     Reads the json file(s) in path.
-    If path points to a directory, all json files in this dir will be read.
+
+    If path points to a directory, all json files in this directory will be returned.
     Path can also point to a single json file.
     In this case a list containing the single specified file is returned.
 
     Parameters
-
-    path (str) :
+    ----------
+    path : str
         Path to the folder containing the json file or to a single json file itself.
         If a directory is specified the path must end with "/".
-        Example: the json files are in the directory "test_files" then "[..]/test_files/" must be passed as path.
+        Otherwise, the path mus end with ".json".
 
-    Returns  (list[dict])
-    list of dictionaries containing the parsed json files
+    Returns
+    -------
+    list[dict]
+        List of dictionaries containing the parsed json files.
     """
 
     if path.endswith('/'):
-        runfiles = os.listdir(path)
-        run_parameters = []
-        for runfile in runfiles:
-            if runfile.endswith(".json"):
-                with open(f"{path}{runfile}", "r") as target_file:
-                    run_parameters.append(json.load(target_file))
+        files = os.listdir(path)
+        file_contents = []
+        for file in files:
+            if file.endswith(".json"):
+                with open(f"{path}{file}", "r") as target_file:
+                    file_contents.append(json.load(target_file))
 
     elif path.endswith(".json"):
         with open(path, "r") as target_file:
-            run_parameters = [json.load(target_file)]
+            file_contents = [json.load(target_file)]
 
     else:
         raise FileNotFoundError(f"Path {path} is not valid!")
 
-    return run_parameters
+    return file_contents
 
 
 def delete_runfile(path: str, run_id: str) -> None:

@@ -86,9 +86,9 @@ def compute_run(network: nx.Graph,
                                  lag_time,
                                  num_time_steps,
                                  num_samples_per_anchor
-                                 ).astype(state_type)
+                                 )
         if not delete_samples:
-            np.save(f"{samples_path}network_dynamics_samples", samples)
+            np.save(f"{samples_path}network_dynamics_samples", samples.astype(state_type))
 
         logger.info(f"Computing {num_time_steps} diffusion maps.")
         (diffusion_maps,
