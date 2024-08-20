@@ -123,8 +123,18 @@ def get_network_dynamics_samples(result_dir_path: str) -> np.ndarray:
         return np.load(f"{result_dir_path}x_data.npz")["x_samples"]
     return np.load(f"{result_dir_path}samples/network_dynamics_samples.npy")
 
-def save_network_dynamics_samples(result_path: str, samples: np.ndarray) -> None:
+def save_network_dynamics_samples(
+        result_path: str,
+        samples: np.ndarray,
+        save_separate: bool=False
+) -> None:
+    if save_separate:
+        num_time_steps = samples.shape[2]
+        for i in range(num_time_steps):
+            np.save(f"{result_path}samples/network_dynamics_samples_{i}", samples)
+        return
     np.save(f"{result_path}samples/network_dynamics_samples", samples)
+    return
 
 
 def get_transition_manifold(result_dir_path: str) -> np.ndarray:
