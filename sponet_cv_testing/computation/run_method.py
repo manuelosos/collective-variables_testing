@@ -1,7 +1,9 @@
 import logging
+import pickle
 from collections.abc import Iterable
 import networkx as nx
 import numpy as np
+import sponet.states
 from sponet import CNVMParameters, CNTMParameters
 from sponet.multiprocessing import sample_many_runs
 from numpy.random import Generator, default_rng

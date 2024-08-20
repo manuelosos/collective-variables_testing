@@ -81,8 +81,8 @@ def save_compute_times(path: str, times: np.ndarray, header="") -> None:
     return
 
 
-def open_network(path: str, network_id: str) -> nx.Graph:
-    return nx.read_graphml(f"{path}{network_id}")
+def open_network(path: str, network_id: str="") -> nx.Graph:
+    return nx.read_graphml(f"{path}{network_id}", node_type=int)
 
 
 def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
@@ -103,9 +103,6 @@ def get_result_format(result_dir_path: str) -> str:
     return "new"
 
 
-
-
-
 def get_anchor_points(result_dir_path: str) -> np.ndarray:
     version = get_result_format(result_dir_path)
     if version == "old":
@@ -123,8 +120,18 @@ def get_network_dynamics_samples(result_dir_path: str) -> np.ndarray:
         return np.load(f"{result_dir_path}x_data.npz")["x_samples"]
     return np.load(f"{result_dir_path}samples/network_dynamics_samples.npy")
 
-def save_network_dynamics_samples(result_path: str, samples: np.ndarray) -> None:
+def save_network_dynamics_samples(
+        result_path: str,
+        samples: np.ndarray,
+        save_separate: bool=False
+) -> None:
+    if save_separate:
+        num_time_steps = samples.shape[2]
+        for i in range(num_time_steps):
+            np.save(f"{result_path}samples/network_dynamics_samples_{i}", samples[:,:,i,:])
+        return
     np.save(f"{result_path}samples/network_dynamics_samples", samples)
+    return
 
 
 def get_transition_manifold(result_dir_path: str) -> np.ndarray:
