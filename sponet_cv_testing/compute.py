@@ -1,7 +1,9 @@
 import numpy as np
 import networkx as nx
 import logging
+from dataclasses import dataclass
 
+from sponet import CNVMParameters
 import sponet_cv_testing.resultmanagement as rm
 from sponet_cv_testing.computation.run_method import (
     setup_dynamic,
@@ -66,9 +68,9 @@ def compute_run(network: nx.Graph,
         num_anchor_points = sampling_parameters["num_anchor_points"]
         num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
 
-        if dynamic.num_opinions <= 256:
+        if num_opinions <= 256:
             state_type = np.uint8
-        elif dynamic.num_opinions <= 65535:
+        elif num_opinions <= 65535:
             state_type = np.uint16
         else:
             state_type = np.uint32
@@ -135,3 +137,51 @@ def compute_run(network: nx.Graph,
     logger.removeHandler(runlog_handler) 
     # Handler has to be removed at the end to avoid duplicate logging of consecutive runs
     return
+
+@dataclass
+class RunParameters:
+    run_id: str
+
+    num_states: int
+    dynamic: CNVMParameters
+
+    network: nx.Graph
+    num_nodes: int
+
+    lag_time: float
+    short_integration_time: float
+    num_time_steps: float
+    num_anchor_points: int
+    num_samples_per_anchor: int
+
+    num_cv_coordinates: int
+    triangle_speedup: bool = False
+    remark = ""
+
+
+    def __init__(self, parameters: dict, network: nx.Graph):
+
+        dynamic_parameters: dict = parameters["dynamic"]
+        simulation_parameters: dict = parameters["simulation"]
+        sampling_parameters: dict = simulation_parameters["sampling"]
+
+        self.run_id = parameters["run_id"]
+
+        self.num_states = dynamic_parameters["num_states"]
+        self.dynamic = setup_dynamic(dynamic_parameters, network)
+
+        self.network = network
+        self.num_nodes = self.dynamic.num_agents
+
+
+
+        # Sampling Parameters
+        self.lag_time = sampling_parameters["lag_time"]
+        self.short_integration_time = sampling_parameters.get("short_integration_time", -1)
+        self.num_time_steps = sampling_parameters.get("num_timesteps", 1)
+        self.num_anchor_points = sampling_parameters["num_anchor_points"]
+        self.num_samples_per_anchor = sampling_parameters["num_samples_per_anchor"]
+
+        self.num_cv_coordinates = simulation_parameters["num_coordinates"]
+        self.triangle_speedup = simulation_parameters["triangle_speedup"]
+        self.remark = parameters["remark"]
