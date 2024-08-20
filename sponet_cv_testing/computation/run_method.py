@@ -1,10 +1,8 @@
 import logging
-import pickle
 from collections.abc import Iterable
 import networkx as nx
 import numpy as np
 import sponet.states
-from scipy.spatial import distance_matrix
 from sponet import CNVMParameters, CNTMParameters
 from sponet.multiprocessing import sample_many_runs
 

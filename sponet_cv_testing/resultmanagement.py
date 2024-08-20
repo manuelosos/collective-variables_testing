@@ -81,8 +81,8 @@ def save_compute_times(path: str, times: np.ndarray, header="") -> None:
     return
 
 
-def open_network(path: str, network_id: str) -> nx.Graph:
-    return nx.read_graphml(f"{path}{network_id}")
+def open_network(path: str, network_id: str="") -> nx.Graph:
+    return nx.read_graphml(f"{path}{network_id}", node_type=int)
 
 
 def save_network(network: nx.Graph, save_path: str, filename: str) -> None:
@@ -101,9 +101,6 @@ def get_result_format(result_dir_path: str) -> str:
     if "x_data.npz" in file_list:
         return "old"
     return "new"
-
-
-
 
 
 def get_anchor_points(result_dir_path: str) -> np.ndarray:
@@ -131,7 +128,7 @@ def save_network_dynamics_samples(
     if save_separate:
         num_time_steps = samples.shape[2]
         for i in range(num_time_steps):
-            np.save(f"{result_path}samples/network_dynamics_samples_{i}", samples)
+            np.save(f"{result_path}samples/network_dynamics_samples_{i}", samples[:,:,i,:])
         return
     np.save(f"{result_path}samples/network_dynamics_samples", samples)
     return
