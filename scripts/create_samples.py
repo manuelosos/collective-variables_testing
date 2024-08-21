@@ -2,7 +2,7 @@
 import logging
 import os
 import argparse
-from sponet_cv_testing.runmanagement import get_runfiles
+from sponet_cv_testing.testpipeline import get_runfiles
 import sponet_cv_testing.resultmanagement as res
 import numba
 import sponet_cv_testing.compute as comp

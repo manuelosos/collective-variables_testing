@@ -5,6 +5,10 @@ import datetime as dt
 import numpy as np
 import networkx as nx
 
+"""
+This file consists of all functions concerned with the results of the runs.
+All actions that either save or load results should be done with functions from this file.
+"""
 
 
 def create_result_dir(

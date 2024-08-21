@@ -3,7 +3,7 @@ import logging
 import json
 import os
 import argparse
-from sponet_cv_testing.runmanagement import run_queue
+from sponet_cv_testing.testpipeline import run_queue
 
 logger = logging.getLogger("testpipeline")
 logger.setLevel(logging.DEBUG)
