@@ -1,1 +1,0 @@
-from sponet_cv_testing import *

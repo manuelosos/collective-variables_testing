@@ -18,7 +18,7 @@ if __name__ == "__main__":
 else:
     data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
     #data_path = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/tests/test_data/"
-results_csv_path: str = "../../data/results/results_table.csv"
+results_csv_path: str = "../data/results/results_table.csv"
 
 
 def archive_run_result(source: str) -> None:
