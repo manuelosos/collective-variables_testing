@@ -4,9 +4,9 @@ import argparse
 import numpy as np
 
 from sponet_cv_testing.testpipeline import get_runfiles
-import sponet_cv_testing.resultmanagement as res
+from sponet_cv_testing import resultmanagement as res
 import numba
-import sponet_cv_testing.compute as comp
+from sponet_cv_testing import compute as comp
 from sponet_cv_testing.computation.run_method import (
     approximate_transition_manifolds,
     linear_regression
