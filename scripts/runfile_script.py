@@ -1,6 +1,6 @@
 import json
 from itertools import product
-import sponet_cv_testing.datamanagement as dm
+import data.datamanagement as dm
 import pandas as pd
 from numpy import isclose
 import logging

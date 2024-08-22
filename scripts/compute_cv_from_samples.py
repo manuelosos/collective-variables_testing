@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("index", type=int)
-parser.add_argument("-run", "--runfile_path",
+parser.add_argument("runfile_path",
                     help="Path to the directory where the runfiles are located.")
-parser.add_argument("-res", "--result_path",
+parser.add_argument("result_path",
                     help="Path to the directory where the results will be saved.")
-parser.add_argument("-net", "--network_path",
+parser.add_argument("network_path",
                     help="Path to the directory where the networks are located.")
 
 
@@ -90,6 +90,8 @@ def main():
     np.save(f"{result_path}collective_variables/cv_coefficients_weighted_{index}", cv_coefficients_weighted)
     np.save(f"{result_path}collective_variables/cv_samples_weighted_{index}", cv_samples_weighted)
     np.save(f"{result_path}/collective_variables/cv_weighted_{index}", cv_weighted)
+
+    os.remove(f"{result_path}samples/network_dynamics_samples_{index}.npy")
 
 
 if __name__ == '__main__':

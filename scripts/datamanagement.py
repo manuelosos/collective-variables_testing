@@ -12,13 +12,13 @@ import sponet_cv_testing.resultmanagement as rm
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
-    data_path: str = "../data/"
+    data_path: str = "/"
     #data_path: str = "../tests/test_data/"
     logger = logging.getLogger("cv_testing.datamanagement")
 else:
     data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
     #data_path = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/tests/test_data/"
-results_csv_path: str = "results/results_table.csv"
+results_csv_path: str = "../data/results/results_table.csv"
 
 
 def archive_run_result(source: str) -> None:

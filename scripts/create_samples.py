@@ -20,11 +20,11 @@ from sponet_cv_testing.computation.run_method import (
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-run", "--runfile_path",
+parser.add_argument("runfile_path",
                     help="Path to the directory where the runfiles are located.")
-parser.add_argument("-res", "--result_path",
+parser.add_argument("result_path",
                     help="Path to the directory where the results will be saved.")
-parser.add_argument("-net", "--network_path",
+parser.add_argument("network_path",
                     help="Path to the directory where the networks are located.")
 
 
@@ -40,7 +40,6 @@ def main():
     run_parameters = get_runfiles(runfile_path)[0]
 
     network = res.open_network(network_path)
-
 
 
     result_path = res.create_result_dir(result_path, run_parameters, network, True)

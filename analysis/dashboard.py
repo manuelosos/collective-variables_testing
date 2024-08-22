@@ -1,4 +1,3 @@
-import json
 import re
 import sys
 
@@ -14,9 +13,8 @@ from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Pa
 from dash.dash_table.Format import Format, Scheme
 from dash.exceptions import PreventUpdate
 from dash_extensions import Keyboard
-import dash_bootstrap_components as dbc
 
-import sponet_cv_testing.datamanagement as dm
+import data.datamanagement as dm
 import sponet_cv_testing.resultmanagement as rm
 
 app = Dash(__name__)

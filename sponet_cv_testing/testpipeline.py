@@ -26,9 +26,9 @@ def run_queue(
         misc_data: dict = None
 ) -> None:
     """
-    Runs the tests specified in the runfiles.
+    Computes the runs specified in the runfiles.
 
-    The runs are specified in .json files whose structure is described "in runfile_doc.md".
+    The runs are specified in .json files whose structure is described in "runfile_doc.md".
     The results of the runs are saved in individual directories located in result_path.
     The result directories will be named after the run_id of the corresponding run.
 

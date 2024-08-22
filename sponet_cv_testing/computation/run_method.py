@@ -90,6 +90,9 @@ def sample_anchors(
     t, x_samples = sample_many_runs(dynamic, anchors, lag_time, num_time_steps + 1, num_samples_per_anchor)
     x_samples = x_samples[:, :, 1:, :]
 
+    print(num_time_steps)
+    print(x_samples.shape)
+
     return x_samples
 
 
