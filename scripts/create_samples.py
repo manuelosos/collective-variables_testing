@@ -2,11 +2,13 @@
 import logging
 import os
 import argparse
-from sponet_cv_testing.testpipeline import get_runfiles
-import sponet_cv_testing.resultmanagement as res
+
+
+from ..sponet_cv_testing.testpipeline import get_runfiles
+from ..sponet_cv_testing import resultmanagement as res
 import numba
-import sponet_cv_testing.compute as comp
-from sponet_cv_testing.computation.run_method import (
+from ..sponet_cv_testing import compute as comp
+from ..sponet_cv_testing.computation.run_method import (
     setup_dynamic,
     create_anchor_points,
     sample_anchors,
