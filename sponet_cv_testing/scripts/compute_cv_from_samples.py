@@ -3,15 +3,11 @@ import os
 import argparse
 import numpy as np
 
-
 from sponet_cv_testing.testpipeline import get_runfiles
 import sponet_cv_testing.resultmanagement as res
 import numba
 import sponet_cv_testing.compute as comp
 from sponet_cv_testing.computation.run_method import (
-    setup_dynamic,
-    create_anchor_points,
-    sample_anchors,
     approximate_transition_manifolds,
     linear_regression
 )
