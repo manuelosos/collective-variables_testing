@@ -15,8 +15,6 @@ from sponet_cv_testing.computation.run_method import (
 )
 
 
-
-
 logger = logging.getLogger(__name__)
 
 parser = argparse.ArgumentParser()
