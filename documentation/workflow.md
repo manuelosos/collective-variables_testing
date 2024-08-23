@@ -1,6 +1,6 @@
 # Basic Usage
 
-The testpipeline can be called from the command line by the main.py method.
+The testpipeline can be called from the command line by the `start_testpipeline.py` script.
 The arguments for the runs can either be provided via the cli 
 or they can be specified in an additional `CONFIG.json` file.
 All the cli arguments are optional keyword parameters.
@@ -14,8 +14,8 @@ The arguments `runfile_path`, `result_path` and `network_path` must be specified
 as a command line argument or in the config.
 If not done so, the program will raise an exception.
 Otherwise, all other parameters are completely optional.
-For more specifics on the parameters, consider the documentation in `main.py`.  
-The `CONFIG.json` has to be located in the same folder as the `main.py`. 
+For more specifics on the parameters, consider the documentation in `start_testpipeline.py`.  
+The `CONFIG.json` has to be located in the same folder as the `start_testpipeline.py`. 
 As the file ending suggests the file has to be a json file.
 
 Here is one example how the config file can look like.
@@ -33,12 +33,12 @@ Here is one example how the config file can look like.
 
 
 
-Here is one example how a call to `main.py` could look like.
+Here is one example how a call to `start_testpipeline.py` could look like.
 ```
-   python3 main.py --runfile_path runfiles/test1.json --result_path results/ --network_path networks/
+   python3 start_testpipeline.py --runfile_path runfiles/test1.json --result_path results/ --network_path networks/
 ```
 The run specified in `test1.json` located in the `runfiles/` folder will be computed.  
-If test1 requires an already created network this can be found in the folder `networks/`.  
+If test1 requires an already created network this must be located in `networks/`.  
 The results of this test will be saved in the folder `results/`.   
 
 

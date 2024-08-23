@@ -49,7 +49,7 @@ def run_queue(
         Number of Numba generated threads that are available for computation.
         If not set, the number of available threads will be chosen automatically by the Numba library.
         If Hyper Threading (or a similar concept) is enabled on the device, Numba may choose a higher number of threads
-        then there are physical cores.
+        then there are physical cores which leads to a slower computation.
 
     delete_samples : bool, default=False
         If set to True, the dynamics samples will not be saved in the results-directory.
