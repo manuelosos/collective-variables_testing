@@ -14,7 +14,7 @@ from dash.dash_table.Format import Format, Scheme
 from dash.exceptions import PreventUpdate
 from dash_extensions import Keyboard
 
-import data.datamanagement as dm
+import scripts.datamanagement as dm
 import sponet_cv_testing.resultmanagement as rm
 
 app = Dash(__name__)
@@ -34,7 +34,7 @@ if len(args) > 0:
     if test == "1":
         results_table_path = "test_table.csv"
 
-df = dm.read_data_csv(f"{results_path}{results_table_path}")
+df = dm.read_data_csv(f"../data/results_table.csv")
 # Pre-filtering of the data can be done here
 #df = df[df["dim_estimate"] >= 1]
 

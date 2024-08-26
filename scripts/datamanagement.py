@@ -3,12 +3,28 @@ import shutil
 import json
 import pandas as pd
 import os
-import sys
+import argparse
 import networkx as nx
 import datetime
 import numpy as np
-from dataclasses import dataclass
+
 import sponet_cv_testing.resultmanagement as rm
+
+
+parser = argparse.ArgumentParser()
+
+
+parser.add_argument("target",
+                    help="Path to the run result.")
+
+parser.add_argument("archive",
+                    help="Path of the archive_dir.")
+
+parser.add_argument("--dir", action="store_true",
+                    help="Set the flag if the target path contains multiple results that should be archived.")
+
+parser.add_argument("-m", "--move", action="store_true",
+                    help="Set the flag if the result should be moved to the destination and not just copied.")
 
 # global variables that should be changed if necessary
 if __name__ == "__main__":
@@ -18,10 +34,36 @@ if __name__ == "__main__":
 else:
     data_path: str = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/data/"
     #data_path = "/home/manuel/Documents/Studium/praktikum/code/sponet_cv_testing/tests/test_data/"
-results_csv_path: str = "../data/results/results_table.csv"
+results_csv_path: str = "../data/results_table.csv"
 
 
-def archive_run_result(source: str) -> None:
+def main():
+
+    args = parser.parse_args()
+
+    target_path = args.target
+    archive_path = args.archive
+
+    if args.dir: is_directory = True
+    else: is_directory = False
+
+    if args.move: move = True
+    else: move = False
+
+
+    if is_directory:
+        archive_dir(target_path)
+    else:
+        archive_run_result(target_path, archive_path, move=move)
+
+    return
+
+
+def archive_run_result(
+        source: str,
+        archive_path: str,
+        allow_only_finished: bool = True,
+        move: bool=False) -> None:
 
     with open(f"{source}parameters.json", "r") as target_file:
         parameters: dict = json.load(target_file)
@@ -29,11 +71,12 @@ def archive_run_result(source: str) -> None:
     run_id: str = str(parameters["run_id"])
 
     file_list: list[str] = os.listdir(source)
-    if "run_finished.txt" not in file_list:
-        print(f"Run {run_id} not finished! Run will not be archived.")
-        return
-
     finished = True
+    if "run_finished.txt" not in file_list:
+        finished = False
+        if allow_only_finished:
+            print("run not finished")
+            return
 
 
     dynamic_parameters: dict = parameters["dynamic"]
@@ -47,7 +90,7 @@ def archive_run_result(source: str) -> None:
     if network_parameters["generate_new"]:
         num_nodes = network_parameters["num_nodes"]
     else:
-        network = rm.open_network(f"{source}networks", "network")
+        network = rm.open_network(f"{source}", "network")
         num_nodes = network.number_of_nodes()
 
     sampling_parameters: dict = parameters["simulation"]["sampling"]
@@ -58,9 +101,10 @@ def archive_run_result(source: str) -> None:
     num_coordinates: int = parameters["simulation"]["num_coordinates"]
 
 
-    dimension_estimate = rm.get_dimension_estimate(source)[-1]
+    #dimension_estimate = rm.get_dimension_estimate(source)[-1]
+    dimension_estimate = -1
 
-    results = read_data_csv()
+    results = read_data_csv(f"{archive_path}results_table.csv")
 
     """
     overwrite: bool = False
@@ -76,10 +120,11 @@ def archive_run_result(source: str) -> None:
             return
     """
 
-    remarks = read_logs(source)
+   #remarks = read_logs(source)
 
-    remarks += " " + parameters.get("remark", "")
+    #remarks += " " + parameters.get("remark", "")
 
+    remarks = " "
     new_result: list = [
         dynamic_model, *dynamic_rates, network_id, network_model, num_nodes, lag_time, num_time_steps,
         num_anchor_points, num_samples_per_anchor, num_coordinates, dimension_estimate, finished, remarks]
@@ -92,12 +137,20 @@ def archive_run_result(source: str) -> None:
 
     logger.debug(f"Starting moving files from {source} to {data_path}results/")
 
-    shutil.move(source, f"{data_path}results/")
+    if move:
+        shutil.move(source, f"{archive_path}results/")
+    else:
+        print(source[:-1])
+        print(f"{archive_path}test_results")
+        shutil.copytree(source[:-1], f"{archive_path}test_results/{run_id}", dirs_exist_ok=True)
+
     logger.info(f"Finished moving files from {source} to {data_path}results/")
-    save_csv(results)
+    save_csv(f"{archive_path}results_table.csv", results)
     logger.info(f"archived run {run_id} in csv.")
 
     return
+
+
 
 def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
     """
@@ -135,9 +188,9 @@ def read_data_csv(path: str=f"{data_path}{results_csv_path}") -> pd.DataFrame:
     return data_csv
 
 
-def save_csv(df: pd.DataFrame) -> None:
+def save_csv(path, df: pd.DataFrame) -> None:
 
-    df.to_csv(f"{data_path}{results_csv_path}")
+    df.to_csv(path)
     return
 
 
@@ -274,9 +327,6 @@ class RunResult:
 
 
 if __name__ == "__main__":
-
-
-
-    archive_dir("../tests/tmp_results/")
+    main()
 
 
