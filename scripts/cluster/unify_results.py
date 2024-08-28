@@ -27,6 +27,7 @@ def main():
 
     for name in names_tm:
         res = unify_results(path + "transition_manifolds/", name)
+
         np.save(f"{path}transition_manifolds/{name}", res)
 
 
@@ -46,9 +47,16 @@ def unify_results(path, name):
     file_list = os.listdir(path)
     for file in file_list:
         if pattern.match(file):
-            target.append(np.load(f"{path}{file}", allow_pickle=True))
+            target.append(file)
 
-    return np.concatenate(target)
+    target = sorted(target)
+
+    res = []
+    for file in target:
+
+        res.append(np.load(f"{path}{file}", allow_pickle=True))
+
+    return np.concatenate(res)
 
 
 

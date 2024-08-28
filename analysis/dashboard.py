@@ -1,10 +1,9 @@
 import re
-import sys
-
 import colorlover
 import networkx as nx
 import numpy as np
 import pandas as pd
+import argparse
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.subplots as ps
@@ -13,30 +12,37 @@ from dash import Dash, html, dash_table, Output, Input, State, callback, dcc, Pa
 from dash.dash_table.Format import Format, Scheme
 from dash.exceptions import PreventUpdate
 from dash_extensions import Keyboard
+from scripts import datamanagement as dm
+from sponet_cv_testing import resultmanagement as rm
 
-import scripts.datamanagement as dm
-import sponet_cv_testing.resultmanagement as rm
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("table_path",
+                    help="Path of the .csv in which all the available results are saved")
+parser.add_argument("results_path",
+                    help="Path to the directory which contains the results")
+parser.add_argument("--test", action="store_true",
+                    help="Set flag if the dashboard should be called with a test set for reduced load time."
+                         "Currently only calls with the first 5 entries of the csv.")
+
+
+args = parser.parse_args()
+
+results_table_path = args.table_path
+results_path = args.results_path
+if args.test: df = dm.read_data_csv(results_table_path).head()
+else: df = dm.read_data_csv(results_table_path)
+
+
+df = df[df["num_time_steps"] > 1]
+
+
 
 app = Dash(__name__)
 
-args = sys.argv[1:]
-
-
-# Adjust path in following function call if necessary
-results_path: str = "../data/results/"
-
-results_table_path = "results_table.csv"
-
-# call with command line argument 1 to load test csv
-#Calling with small dataset significantly reduces initial load time
-if len(args) > 0:
-    test = args[0]
-    if test == "1":
-        results_table_path = "test_table.csv"
-
-df = dm.read_data_csv(f"../data/results_table.csv")
-# Pre-filtering of the data can be done here
-#df = df[df["dim_estimate"] >= 1]
+def main():
+    app.run(debug=True)
 
 
 def compute_network_plot_trace(network: nx.Graph, seed: int=100):
@@ -210,14 +216,16 @@ def get_table_html(data: pd.DataFrame, table_id: str) -> dash_table.DataTable:
              format=Format(precision=2, scheme=Scheme.fixed)),
         dict(id="rt_ba", name="rt_ba", selectable=True, type="numeric",
              format=Format(precision=2, scheme=Scheme.fixed)),
-        dict(id="lag_time", name="lag_time", selectable=True, type="numeric",
+        dict(id="lag_time", name="lag time", selectable=True, type="numeric",
              format=Format(precision=1, scheme=Scheme.fixed)),
         dict(id="num_time_steps", name="time steps", selectable=True, type="numeric",
              format=Format(precision=2, scheme=Scheme.fixed)),
-        dict(id="dim_estimate", name="dim_estimate", selectable=True, type="numeric",
+        dict(id="dim_estimate", name="dim. estimate", selectable=True, type="numeric",
              format=Format(scheme=Scheme.fixed)),
-        dict(id="finished", name="finished", selectable=True, type="text"),
-        dict(id="remarks", name="remarks", selectable=True, type="text")
+        dict(id="finished", name="finished", selectable=True, type="text",
+             format=Format(scheme=Scheme.fixed)),
+        dict(id="remarks", name="remarks", selectable=True, type="text",
+             format=Format(scheme=Scheme.fixed))
     ]
 
     show_df = data.reset_index()
@@ -419,7 +427,7 @@ def get_coords_network_plots_html():
 
 
 def get_timestep_selector():
-    time_step_selector = dcc.Slider(id="time_step_selector", min=0, max=1, value=0, disabled=True, step=1)
+    time_step_selector = dcc.Slider(id="time_step_selector", min=0, max=1, value=0, disabled=True, step=None)
     return time_step_selector
 
 
@@ -434,7 +442,7 @@ def get_cv_plots_html():
                                  {'label': 'Non Weighted', 'value': 'non_weighted'},
                                  {'label': 'Degree Weighted', 'value': 'degree_weighted'}
                              ],
-                             value="degree_weighted",
+                             value="degree_weighted",   
                              style={"width": "10vw"}
                              )
             ],),
@@ -456,7 +464,7 @@ def get_cv_plots_html():
                 dcc.Graph(
                     id="cv_network_plots",
                     mathjax=True,
-                    style={'width': '50vw', 'height': '125vh'}
+                    style={'width': '25vw', 'height': '80vh'}
                 )],
                 overlay_style={"visibility": "visible", "opacity": .5},
                 delay_show=200,
@@ -465,7 +473,7 @@ def get_cv_plots_html():
                 dcc.Graph(
                     id="cv_xixifit_plots",
                     mathjax=True,
-                    style={'width': '50vw', 'height': '125vh'}
+                    style={'width': '25vw', 'height': '80vh'}
                 )],
                 overlay_style={"visibility": "visible", "opacity": .5},
                 delay_show=200,
@@ -514,6 +522,7 @@ def update_coord_plot_coord_dd_cb(run_id: str) -> list[list[str]]:
     Output("time_step_selector", "value"),
     Output("time_step_selector", "min"),
     Output("time_step_selector", "max"),
+    Output("time_step_selector", "marks"),
     Output("time_step_selector", "disabled"),
     Input("coordinates_plot_dropdown_runs", "value")
 )
@@ -523,19 +532,25 @@ def update_time_step_selector(selected_run):
     file_path = f"{results_path}{selected_run}/"
     run_params = rm.get_parameters(file_path)
     num_time_steps = run_params["simulation"]["sampling"].get("num_timesteps", 1)
+    lag_time = run_params["simulation"]["sampling"]["lag_time"]
+    time_steps = np.linspace(0,lag_time,num_time_steps+1)[1:]
 
     if num_time_steps == 1:
-        value = 0
-        min = 0
-        max = 1
+        value = 1
+        marks ={1:1}
+        slider_min = 0
+        slider_max = 1
         disabled = True
     else:
         value = num_time_steps-1
-        min = 0
-        max = num_time_steps-1
+        marks ={ i: str(time_steps[i]) for i in range(len(time_steps)) }
+        slider_min = 0
+        slider_max = num_time_steps-1
         disabled = False
 
-    return [value, min, max, disabled]
+    print(time_steps)
+
+    return [value,slider_min, slider_max, marks, disabled]
 
 
 
@@ -591,9 +606,6 @@ def update_3d_coordinates_plot(selected_run, time_step, dropdown_x, dropdown_y, 
     xi = rm.get_transition_manifold(file_path)[time_step]
     x_anchor = rm.get_anchor_points(file_path)
     network = rm.open_network(file_path, "network")#
-
-    print(x_anchor.size)
-    print(xi.size)
 
     color_options, colors = calc_colors(x_anchor, network)
     fig = px.scatter_3d(x=xi[:, int(dropdown_x) - 1],
@@ -868,8 +880,7 @@ app.layout = html.Div([
     ])
 
 
-def main() -> None:
-    app.run(debug=True)
+
 
 
 if __name__ == '__main__':
